@@ -1,8 +1,8 @@
 ---
 name: product-secretary
-description: Organize messy product, architecture, and feature conversations into structured project intake documents. Use when the user provides Markdown compilations, free-form notes, mobile ChatGPT summaries, future feature ideas, unresolved project questions, or mixed lists of intentions, demands, risks, decisions, and pending items that need triage before becoming official Seed project documentation.
+description: Organiza conversas baguncadas de produto, arquitetura e funcionalidades em documentos estruturados de entrada do projeto. Use quando o usuario fornecer compilados Markdown, notas livres, resumos do ChatGPT no celular, ideias de funcionalidades futuras, perguntas de projeto nao resolvidas ou listas misturadas de intencoes, demandas, riscos, decisoes e pendencias que precisam de triagem antes de virar documentacao oficial do Seed.
 ---
-# Product Secretary Skill
+# Secretario De Produto
 
 ## Proposito
 
@@ -63,7 +63,7 @@ Saidas recomendadas:
 - resumo executivo;
 - intencoes humanas identificadas;
 - demandas candidatas;
-- features futuras;
+- funcionalidades futuras;
 - pendencias;
 - riscos;
 - perguntas abertas;
@@ -157,11 +157,11 @@ migration-proposal.md
 `migration-proposal.md` lista somente o que pode ser promovido para documentos
 formais depois de aprovacao humana.
 
-## Workflow Da Skill
+## Fluxo De Trabalho Da Skill
 
 1. Ler as regras do repositorio e os ADRs aceitos.
 2. Ler o compilado recebido.
-3. Extrair intencoes antes de listar features.
+3. Extrair intencoes antes de listar funcionalidades.
 4. Classificar cada ideia pelo modelo acima.
 5. Separar MVP, futuro, fora de escopo, risco e duvida.
 6. Identificar conflitos com fundacao ou ADRs.

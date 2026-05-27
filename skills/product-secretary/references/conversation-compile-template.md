@@ -1,4 +1,4 @@
-# Conversation Compile Template
+# Modelo De Compilado De Conversa
 
 Use este modelo para pedir ao ChatGPT do celular um compilado estruturado ao
 fim de uma conversa desordenada.
@@ -28,7 +28,7 @@ pendencias ou descartadas.
 Liste itens que parecem poder virar requisito, tarefa, modulo ou criterio de
 aceite.
 
-## Features Futuras
+## Funcionalidades Futuras
 
 Liste ideias que parecem importantes, mas nao precisam entrar agora.
 
@@ -61,7 +61,7 @@ sido mal interpretados.
 ```txt
 Com base em toda esta conversa, gere um arquivo Markdown estruturado usando o
 modelo abaixo. Nao trate nenhuma ideia como decisao aprovada. Preserve duvidas,
-contradicoes e incertezas. Separe ideias, possiveis demandas, features futuras,
-pendencias, decisoes sugeridas e riscos. Seja claro o suficiente para outra IA
+contradicoes e incertezas. Separe ideias, possiveis demandas, funcionalidades
+futuras, pendencias, decisoes sugeridas e riscos. Seja claro o suficiente para outra IA
 organizar depois no projeto seed-skill.
 ```
