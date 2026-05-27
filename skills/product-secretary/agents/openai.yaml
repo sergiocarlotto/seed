@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Secretary"
+  short_description: "Organiza conversas soltas em triagem de produto."
+  default_prompt: "Use a skill product-secretary para organizar compilados de conversas, ideias, features futuras, pendencias, riscos e decisoes candidatas antes de promover qualquer item para documentos formais do projeto Seed."

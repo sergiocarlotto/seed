@@ -1,0 +1,4 @@
+interface:
+  display_name: "Software Architect"
+  short_description: "Senior architecture guidance for software projects"
+  default_prompt: "Use $software-architect to evaluate architecture options and produce a pragmatic decision path."
