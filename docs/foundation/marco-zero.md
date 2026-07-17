@@ -386,7 +386,7 @@ atendidos ou excecoes foram registradas.
 
 Documentos obrigatorios:
 
-- `AGENTS.md`: regras de trabalho para IAs no repositorio.
+- `CLAUDE.md`: regras de trabalho para IAs no repositorio.
 - `docs/foundation/marco-zero.md`: fundacao formal do produto.
 - `docs/decisions/README.md`: indice de decisoes arquiteturais.
 - `docs/decisions/ADR-*.md`: decisoes arquiteturais versionadas.
@@ -401,7 +401,7 @@ Quando atualizar:
   especifica.
 - Todo modulo relevante deve ter objetivo, escopo, fora de escopo, criterios de
   aceite e validacao.
-- Toda IA deve consultar `AGENTS.md`, este documento e o indice de ADRs antes de
+- Toda IA deve consultar `CLAUDE.md`, este documento e o indice de ADRs antes de
   propor mudancas materiais.
 
 Decisoes e criterios de aceite devem ser registrados de forma objetiva,
@@ -565,7 +565,7 @@ Criterio para avancar: demanda recorrente e impacto claro.
 
 ## 13. Regras para Futuras IAs
 
-- Leia `AGENTS.md`, este documento e `docs/decisions/README.md` antes de propor
+- Leia `CLAUDE.md`, este documento e `docs/decisions/README.md` antes de propor
   mudancas materiais.
 - Preserve a separacao entre intencao, requisito, tarefa, modulo e codigo.
 - Nao transforme visao futura em escopo do MVP sem decisao explicita.

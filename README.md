@@ -9,7 +9,7 @@ explicit, versioned, and easy for future AI agents and humans to consult.
 
 Before making technical recommendations or code changes, read:
 
-- `AGENTS.md`
+- `CLAUDE.md`
 - `docs/foundation/marco-zero.md`
 - `docs/decisions/README.md`
 
@@ -34,19 +34,13 @@ prompts/
 Versioned project skills live in:
 
 ```txt
-skills/<skill-name>/
+.claude/skills/<skill-name>/
 ```
 
-`C:\Users\sergi\.codex\skills\` is only the local Codex runtime location. When
-a skill must be available to Codex, sync the versioned source into that runtime
-folder:
-
-```powershell
-.\tools\sync-codex-skills.ps1
-```
-
-Do not manually copy a skill folder into an existing runtime skill folder. That
-can create nested duplicates such as `skill-name/skill-name/`.
+Claude Code discovers these project skills automatically when you work inside
+this repository. There is no runtime sync step: the versioned folder under
+`.claude/skills/` is the single source of truth and the location Claude loads
+from directly.
 
 ## Foundation
 

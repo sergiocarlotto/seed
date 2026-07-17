@@ -4,6 +4,13 @@
 
 Aceita
 
+> Parcialmente substituida pela [ADR-0009](ADR-0009-ai-runtime-claude-code.md).
+> A decisao central de consolidacao (fonte versionada unica neste repositorio)
+> permanece valida. Foram substituidos apenas: o local das skills, que passou de
+> `skills/<skill-name>/` para `.claude/skills/<skill-name>/`, e o runtime de IA
+> assistida, que deixou de ser o Codex local com sincronizacao manual. Veja a
+> ADR-0009 para o racional e o impacto de migracao.
+
 ## Contexto
 
 O projeto inicialmente tinha um repositorio separado chamado `seed-skills` para

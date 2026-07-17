@@ -10,11 +10,12 @@ arquitetura, planos de implementacao ou escolhas de dependencias.
 | ADR | Status | Decisao |
 | --- | --- | --- |
 | [ADR-0000](ADR-0000-product-foundation.md) | Aceita | Fundacao do produto: `docs/foundation/marco-zero.md` |
-| [ADR-0001](ADR-0001-repository-consolidation.md) | Aceita | Consolidacao do repositorio: prompts e skills vivem neste repositorio |
+| [ADR-0001](ADR-0001-repository-consolidation.md) | Aceita (parcialmente substituida pela ADR-0009) | Consolidacao do repositorio: prompts e skills vivem neste repositorio |
 | [ADR-0002](ADR-0002-frontend-base.md) | Aceita | Base frontend: TypeScript, React, Next.js, Tailwind CSS, shadcn/ui, Zod, Playwright |
 | [ADR-0003](ADR-0003-backend-base.md) | Aceita | Base backend: C#, ASP.NET Core, API separada, monolito modular, OpenAPI |
 | [ADR-0004](ADR-0004-language-and-documentation-standard.md) | Aceita | Padrao de idioma: codigo e contratos tecnicos em ingles, documentacao interna de produto em portugues |
 | [ADR-0005](ADR-0005-data-storage-and-ownership.md) | Aceita | Banco de dados, propriedade dos dados, persistencia, tenancy e auditoria |
+| [ADR-0009](ADR-0009-ai-runtime-claude-code.md) | Aceita | Runtime de IA assistida: Claude Code; skills do projeto em `.claude/skills/` |
 
 ## Decisoes Pendentes
 

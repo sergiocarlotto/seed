@@ -1,4 +1,0 @@
-interface:
-  display_name: "Arquiteto De Software"
-  short_description: "Orienta decisoes de arquitetura de software."
-  default_prompt: "Use a skill software-architect para avaliar opcoes de arquitetura, revisar ADRs, mapear riscos tecnicos e propor um caminho pragmatico de decisao."

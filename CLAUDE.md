@@ -24,9 +24,9 @@ alteracoes de codigo, toda IA deve ler:
 
 - Fundacao do produto: `docs/foundation/marco-zero.md`.
 - Prompts versionados: `prompts/`.
-- Skills versionadas do projeto: `skills/<skill-name>/`.
-- Skills locais do runtime Codex em `C:\Users\sergi\.codex\skills\` sao apenas
-  copias instaladas; a fonte versionada permanece neste repositorio.
+- Skills versionadas do projeto: `.claude/skills/<skill-name>/`. O Claude Code
+  descobre essas skills automaticamente ao trabalhar neste repositorio; nao ha
+  passo de sincronizacao para runtime externo.
 - Base frontend: TypeScript, React, Next.js, Tailwind CSS, shadcn/ui, Zod e
   Playwright.
 - Padrao de idioma: codigo e contratos tecnicos em ingles; documentacao interna

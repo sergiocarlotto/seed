@@ -1,4 +1,0 @@
-interface:
-  display_name: "Engenheiro De Seguranca"
-  short_description: "Revisa autenticacao, autorizacao e tenancy."
-  default_prompt: "Use a skill security-engineer para revisar autenticacao, autorizacao, sessoes, papeis, tenancy, auditoria de acesso e riscos de seguranca antes de aceitar ADRs ou implementar fluxos criticos."

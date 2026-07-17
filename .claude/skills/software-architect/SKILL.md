@@ -1,6 +1,6 @@
 ---
 name: software-architect
-description: Orientacao senior de arquitetura de software para produto e engenharia. Use quando Codex precisar avaliar opcoes de arquitetura, definir limites modulares, criar ou revisar ADRs, avaliar riscos tecnicos, desenhar evolucao do sistema, escolher caminhos pragmaticos de implementacao ou atuar como arquiteto senior antes ou durante a implementacao.
+description: Orientacao senior de arquitetura de software para produto e engenharia. Use quando for preciso avaliar opcoes de arquitetura, definir limites modulares, criar ou revisar ADRs, avaliar riscos tecnicos, desenhar evolucao do sistema, escolher caminhos pragmaticos de implementacao ou atuar como arquiteto senior antes ou durante a implementacao.
 ---
 
 # Arquiteto De Software

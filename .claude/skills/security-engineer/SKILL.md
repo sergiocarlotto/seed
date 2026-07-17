@@ -1,6 +1,6 @@
 ---
 name: security-engineer
-description: Revisa seguranca de aplicacao, autenticacao, autorizacao, sessoes, cookies, tokens, papeis, tenancy, auditoria de acesso e riscos de abuso. Use quando Codex precisar avaliar ADRs, requisitos, planos ou implementacoes que controlem identidade, acesso, isolamento entre organizacoes, convite de usuarios, recuperacao de senha, enforcement backend ou qualquer fluxo critico de seguranca do Seed.
+description: Revisa seguranca de aplicacao, autenticacao, autorizacao, sessoes, cookies, tokens, papeis, tenancy, auditoria de acesso e riscos de abuso. Use quando for preciso avaliar ADRs, requisitos, planos ou implementacoes que controlem identidade, acesso, isolamento entre organizacoes, convite de usuarios, recuperacao de senha, enforcement backend ou qualquer fluxo critico de seguranca do Seed.
 ---
 
 # Engenheiro De Seguranca

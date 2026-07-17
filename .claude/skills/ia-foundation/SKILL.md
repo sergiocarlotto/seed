@@ -1,6 +1,6 @@
 ---
 name: ia-foundation
-description: Define a fundacao IA-native do Marco Zero de um produto de software antes de requisitos, arquitetura, implementacao ou backlog. Use quando Codex precisar raciocinar sobre IA, intencao humana, estrategia de produto, documentacao viva, arquitetura modular, papeis de agentes, roteamento de revisores especialistas, lacunas de skills revisoras, registros de decisao e evolucao incremental para orientar uma iniciativa SaaS.
+description: Define a fundacao IA-native do Marco Zero de um produto de software antes de requisitos, arquitetura, implementacao ou backlog. Use quando for preciso raciocinar sobre IA, intencao humana, estrategia de produto, documentacao viva, arquitetura modular, papeis de agentes, roteamento de revisores especialistas, lacunas de skills revisoras, registros de decisao e evolucao incremental para orientar uma iniciativa SaaS.
 ---
 
 # Fundacao IA
@@ -83,9 +83,9 @@ Roteamento conhecido de revisores neste projeto:
   ideias, entrada de funcionalidades, perguntas nao resolvidas, riscos e
   conversao de material conversacional em documentos estruturados do projeto.
 - `skill-creator`: usar quando a capacidade ausente ou proxima capacidade
-  necessaria for uma nova skill Codex, ou quando uma skill existente precisar
-  de fluxo de trabalho, gatilho, barra de qualidade ou historia de instalacao/restauracao
-  mais forte.
+  necessaria for uma nova skill do Claude Code, ou quando uma skill existente
+  precisar de fluxo de trabalho, gatilho, barra de qualidade ou historia de
+  instalacao/restauracao mais forte.
 - `ia-foundation`: manter propriedade sobre filosofia de produto, modelo
   operacional de IA, limites de decisao humana, modelo de documentacao viva e
   decisoes de roteamento de revisao.

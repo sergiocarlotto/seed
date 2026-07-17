@@ -1,4 +1,0 @@
-interface:
-  display_name: "Fundacao IA"
-  short_description: "Define a fundacao IA-native do Marco Zero."
-  default_prompt: "Use a skill ia-foundation para definir como IA, produto, arquitetura, documentacao viva, revisao especializada e evolucao incremental devem orientar o Marco Zero antes de requisitos ou implementacao."

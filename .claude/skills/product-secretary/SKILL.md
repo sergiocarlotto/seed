@@ -125,7 +125,7 @@ A skill deve sempre comparar o material com:
 - `docs/foundation/marco-zero.md`;
 - `docs/decisions/README.md`;
 - ADRs aceitos;
-- regras em `AGENTS.md`.
+- regras em `CLAUDE.md`.
 
 Se a conversa sugerir algo que conflita com a fundacao ou ADRs, a saida correta
 nao e aplicar a mudanca. A saida correta e registrar o conflito e propor uma
@@ -186,4 +186,4 @@ Leia `references/conversation-compile-template.md` quando o usuario pedir um mod
 
 ## Uso Como Fonte Versionada
 
-Esta skill deve permanecer versionada neste repositorio em `skills/product-secretary`. Se for necessario usar no Codex local, sincronize as skills com `.\tools\sync-codex-skills.ps1`, mantendo este repositorio como fonte de verdade.
+Esta skill deve permanecer versionada neste repositorio em `.claude/skills/product-secretary`. O Claude Code a descobre automaticamente ao trabalhar neste repositorio, sem passo de sincronizacao: a pasta versionada e a fonte de verdade e o local do qual o Claude carrega diretamente.

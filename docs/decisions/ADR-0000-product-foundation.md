@@ -54,7 +54,7 @@ documentacao e trabalho futuro com IA.
 Esta decisao e valida se:
 
 - futuras IAs conseguirem encontrar a fundacao do produto a partir de
-  `AGENTS.md`;
+  `CLAUDE.md`;
 - a fundacao separar claramente MVP, evolucao futura e itens fora de escopo;
 - novas decisoes puderem referenciar ou substituir a fundacao por meio de ADRs;
 - o trabalho de implementacao puder ser rastreado ate intencao e criterios de
