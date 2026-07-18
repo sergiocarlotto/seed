@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { errorMessage } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type CompanyFormProps = {
   initialName?: string;
@@ -20,7 +24,7 @@ export default function CompanyForm({ initialName = "", submitLabel, onSubmit }:
     try {
       await onSubmit(name.trim());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String((err as { message?: string })?.message ?? "Erro ao salvar."));
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -28,33 +32,26 @@ export default function CompanyForm({ initialName = "", submitLabel, onSubmit }:
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Nome da empresa
-        </label>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="name">Nome da empresa</Label>
+        <Input
           id="name"
           type="text"
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
         />
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      <Button type="submit" size="lg" disabled={loading}>
         {loading ? "Salvando..." : submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }

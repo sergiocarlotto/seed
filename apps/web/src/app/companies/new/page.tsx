@@ -4,27 +4,36 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CompanyForm from "@/components/CompanyForm";
 import { api } from "@/lib/api";
-import type { Organization } from "@/lib/types";
+import type { Company } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NewCompanyPage() {
   const router = useRouter();
 
   async function handleSubmit(name: string) {
-    await api.post<Organization>("/organizations", { name });
+    await api.post<Company>("/companies", { name });
     router.push("/companies");
     router.refresh();
   }
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-col gap-6 px-4 py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Nova empresa</h1>
-        <Link href="/companies" className="text-sm font-medium underline text-zinc-600 dark:text-zinc-400">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Nova empresa</h1>
+        <Button variant="ghost" size="sm" render={<Link href="/companies" />}>
           Voltar
-        </Link>
+        </Button>
       </div>
 
-      <CompanyForm submitLabel="Criar" onSubmit={handleSubmit} />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Dados da empresa</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CompanyForm submitLabel="Criar" onSubmit={handleSubmit} />
+        </CardContent>
+      </Card>
     </main>
   );
 }

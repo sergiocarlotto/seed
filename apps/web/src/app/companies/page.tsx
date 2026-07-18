@@ -4,22 +4,61 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
-import { logout } from "@/lib/auth";
-import type { Organization } from "@/lib/types";
+import { getMe, logout } from "@/lib/auth";
+import type { Company } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+function StatusBadge({ status }: { status: string }) {
+  const active = status.toLowerCase() === "active";
+  return (
+    <span
+      className={
+        "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset " +
+        (active
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950 dark:text-emerald-400"
+          : "bg-muted text-muted-foreground ring-border")
+      }
+    >
+      {active ? "Ativa" : status}
+    </span>
+  );
+}
 
 export default function CompaniesPage() {
   const router = useRouter();
-  const [companies, setCompanies] = useState<Organization[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [target, setTarget] = useState<Company | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const data = await api.get<Organization[]>("/organizations");
-        if (active) setCompanies(data);
+        const me = await getMe();
+        if (active) {
+          setCompanies(me.companies);
+          setIsAdmin(me.orgRole === "Admin");
+        }
       } catch (err) {
         if (active) setError(errorMessage(err));
       } finally {
@@ -31,17 +70,18 @@ export default function CompaniesPage() {
     };
   }, []);
 
-  async function handleDelete(id: string) {
-    if (!window.confirm("Excluir esta empresa? Esta ação não pode ser desfeita.")) return;
-    setDeletingId(id);
+  async function handleDelete() {
+    if (!target) return;
+    setDeleting(true);
     setError(null);
     try {
-      await api.del<void>(`/organizations/${id}`);
-      setCompanies((prev) => prev.filter((c) => c.id !== id));
+      await api.del<void>(`/companies/${target.id}`);
+      setCompanies((prev) => prev.filter((c) => c.id !== target.id));
+      setTarget(null);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
-      setDeletingId(null);
+      setDeleting(false);
     }
   }
 
@@ -56,65 +96,93 @@ export default function CompaniesPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Empresas</h1>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Empresas</h1>
+        <Button variant="outline" size="sm" onClick={handleLogout}>
           Sair
-        </button>
+        </Button>
       </div>
 
-      <div>
-        <Link
-          href="/companies/new"
-          className="inline-block rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          Nova empresa
-        </Link>
-      </div>
+      {isAdmin && (
+        <div>
+          <Button render={<Link href="/companies/new" />}>Nova empresa</Button>
+        </div>
+      )}
 
       {error && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
 
       {loading ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Carregando...</p>
+        <p className="text-sm text-muted-foreground">Carregando...</p>
       ) : companies.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhuma empresa ainda.</p>
+        <p className="text-sm text-muted-foreground">Nenhuma empresa ainda.</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-zinc-200 rounded border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
-          {companies.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-4 px-4 py-3">
-              <div className="flex flex-col">
-                <span className="font-medium text-zinc-900 dark:text-zinc-50">{c.name}</span>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Papel: {c.role}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Link
-                  href={`/companies/${c.id}`}
-                  className="rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                >
-                  Editar
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(c.id)}
-                  disabled={deletingId === c.id}
-                  className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-                >
-                  {deletingId === c.id ? "Excluindo..." : "Excluir"}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="rounded-xl ring-1 ring-foreground/10">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Status</TableHead>
+                {isAdmin && <TableHead className="text-right">Ações</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {companies.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={c.status} />
+                  </TableCell>
+                  {isAdmin && (
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          render={<Link href={`/companies/${c.id}`} />}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setTarget(c)}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
+
+      <Dialog open={target !== null} onOpenChange={(open) => !open && setTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir empresa</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir <strong>{target?.name}</strong>? Esta ação pode ser
+              revertida apenas pela equipe.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" disabled={deleting} />}>
+              Cancelar
+            </DialogClose>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Excluindo..." : "Excluir"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
