@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,21 +11,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSession } from "@/lib/session";
-import { logout } from "@/lib/auth";
+import { useLogout } from "@/lib/use-logout";
 
 export function UserMenu() {
-  const router = useRouter();
   const { user, orgRole } = useSession();
-
-  async function handleLogout() {
-    try {
-      await logout();
-    } catch {
-      // Mesmo se falhar, seguimos para o login.
-    }
-    router.push("/login");
-    router.refresh();
-  }
+  const handleLogout = useLogout();
 
   const initials = user.fullName
     .split(" ")

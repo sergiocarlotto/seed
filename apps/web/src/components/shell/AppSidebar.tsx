@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HelpCircle, LogOut, Sprout } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { navModules, visibleNav, type OrgRole } from "@/lib/nav";
 import { useSession } from "@/lib/session";
-import { logout } from "@/lib/auth";
+import { useLogout } from "@/lib/use-logout";
 
 /**
  * Menu lateral gerado a partir de `navModules`, filtrado pelo papel do usuário.
@@ -29,19 +28,9 @@ export function AppSidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { orgRole } = useSession();
   const modules = visibleNav(navModules, orgRole as OrgRole);
-
-  async function handleLogout() {
-    try {
-      await logout();
-    } catch {
-      // segue para o login mesmo em falha
-    }
-    router.push("/login");
-    router.refresh();
-  }
+  const handleLogout = useLogout();
 
   return (
     <TooltipProvider>
@@ -70,6 +59,7 @@ export function AppSidebar({
                       href={item.href}
                       onClick={onNavigate}
                       aria-current={active ? "page" : undefined}
+                      aria-label={collapsed ? item.label : undefined}
                       data-testid={`nav-${item.href}`}
                       className={cn(
                         "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
@@ -107,6 +97,7 @@ export function AppSidebar({
             variant="ghost"
             size="sm"
             disabled
+            aria-label="Ajuda"
             className={cn("w-full justify-start", collapsed && "justify-center")}
           >
             <HelpCircle className="size-4" />
@@ -116,6 +107,7 @@ export function AppSidebar({
             variant="ghost"
             size="sm"
             onClick={handleLogout}
+            aria-label="Sair"
             data-testid="sidebar-logout"
             className={cn("w-full justify-start", collapsed && "justify-center")}
           >
