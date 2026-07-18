@@ -74,16 +74,32 @@ O *scaffold* (estrutura inicial) do monorepo esta montado e verificado rodando:
   prod, `Caddyfile` (same-origin) e `.env.example` (ADR-0007). Stack sobe com
   todos os servicos `healthy` e o roteamento same-origin foi validado.
 
+## Modulo `organizations` (implementado — branch `feat/organizations-login-empresa`)
+
+O primeiro modulo de negocio esta implementado e verificado (2026-07-18):
+cadastro/login por email+senha (cookie httpOnly), CRUD de empresa
+(`Organization`) com isolamento por tenant, papeis owner/admin/member, migration
+`InitialCreate`, e testes de integracao (6/6 verdes, com Postgres real via
+Testcontainers). Frontend com telas de login, registro e CRUD de empresa.
+
+Plano executado: `docs/plans/2026-07-18-organizations-login-empresa.md`.
+
+### Como experimentar
+
+```powershell
+docker compose up -d --build
+# abra http://localhost/register  -> crie uma conta (cria empresa + usuario owner)
+# depois gerencie empresas em http://localhost/companies
+docker compose down
+```
+
 ## Proximo passo
 
-Primeiro modulo de negocio: **`organizations`** (a base de tenancy).
-
-1. Escrever `docs/modules/organizations.md` a partir de `docs/modules/_template.md`
-   (ADR-0008).
-2. Implementar as entidades `Organization`, `User` e `OrganizationMembership`
-   com ASP.NET Core Identity e o filtro de tenant (ADR-0005, ADR-0006).
-3. Ligar o Entity Framework Core ao PostgreSQL e criar a primeira migration
-   (ADR-0005).
+- Revisar e mesclar a branch `feat/organizations-login-empresa` na `main`.
+- Sub-decisao pendente: estrategia de email transacional (para convite e
+  recuperacao de senha da ADR-0006).
+- Proximo modulo: `clients` (cadastro dos clientes atendidos), seguindo o mesmo
+  ritmo (doc -> modelo + migration -> endpoints + testes -> UI).
 
 ## Sub-decisao ainda em aberto
 

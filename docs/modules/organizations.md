@@ -53,12 +53,15 @@ organizacao.
 
 ## Criterios de Aceite
 
-- [ ] Cadastro cria organizacao + owner e autentica.
-- [ ] Login define cookie httpOnly; logout limpa a sessao; `/auth/me` sem sessao = 401.
-- [ ] Usuario so ve/edita organizacoes das quais e membro; cross-tenant = 404.
-- [ ] owner cria/edita/exclui; admin edita; exclusao e soft delete.
-- [ ] Testes de integracao (auth + CRUD + cross-tenant) verdes.
-- [ ] Frontend: login, registro e CRUD de empresa funcionam via Docker (same-origin).
+Status: **atendidos** (implementado e verificado em 2026-07-18, na branch
+`feat/organizations-login-empresa`).
+
+- [x] Cadastro cria organizacao + owner e autentica.
+- [x] Login define cookie httpOnly; logout limpa a sessao; `/auth/me` sem sessao = 401.
+- [x] Usuario so ve/edita organizacoes das quais e membro; cross-tenant = 404.
+- [x] owner cria/edita/exclui; admin edita; exclusao e soft delete.
+- [x] Testes de integracao (auth + CRUD + cross-tenant) verdes (6/6).
+- [x] Frontend: login, registro e CRUD de empresa funcionam via Docker (same-origin).
 
 ## Eventos de Auditoria
 
