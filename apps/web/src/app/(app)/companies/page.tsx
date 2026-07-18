@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import type { Company } from "@/lib/types";
@@ -44,6 +45,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function CompaniesPage() {
   useSetPageHeader({ title: "Empresas", breadcrumb: ["Administração", "Empresas"] });
+  const router = useRouter();
   const { companies: sessionCompanies, orgRole } = useSession();
   const isAdmin = orgRole === "Admin";
   const [companies, setCompanies] = useState<Company[]>(sessionCompanies);
@@ -59,6 +61,7 @@ export default function CompaniesPage() {
       await api.del<void>(`/companies/${target.id}`);
       setCompanies((prev) => prev.filter((c) => c.id !== target.id));
       setTarget(null);
+      router.refresh();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -68,13 +71,13 @@ export default function CompaniesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {isAdmin && (
+      {isAdmin && companies.length > 0 && (
         <div>
           <Button render={<Link href="/companies/new" />}>Nova empresa</Button>
         </div>
       )}
 
-      {error && <ErrorState message={error} onRetry={() => setError(null)} />}
+      {error && <ErrorState message={error} onRetry={handleDelete} />}
 
       {companies.length === 0 ? (
         <EmptyState

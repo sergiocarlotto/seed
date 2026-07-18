@@ -21,8 +21,7 @@ export default function NewCompanyPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">Dados da empresa</h2>
+      <div className="flex items-center justify-end gap-4">
         <Button variant="ghost" size="sm" render={<Link href="/companies" />}>
           Voltar
         </Button>
