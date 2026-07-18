@@ -6,7 +6,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection s)
     {
-        s.AddScoped<Organizations.IOrganizationService, Organizations.OrganizationService>();
+        s.AddScoped<Companies.ICompanyService, Companies.CompanyService>();
         return s;
     }
 }
