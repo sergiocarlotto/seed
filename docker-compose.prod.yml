@@ -1,0 +1,24 @@
+# Override PROD-LIKE. Usar explicitamente:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Nao expoe db/api/web direto ao host: todo o trafego externo passa pelo proxy
+# (Caddy), que termina TLS e serve tudo na mesma origem. Defina SITE_ADDRESS no
+# .env com o dominio real (ex.: SITE_ADDRESS=seu-dominio.com) para o Caddy emitir
+# HTTPS automaticamente.
+
+services:
+  db:
+    restart: unless-stopped
+
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    restart: unless-stopped
+
+  web:
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+
+  proxy:
+    restart: unless-stopped

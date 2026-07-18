@@ -1,0 +1,18 @@
+# Reverse proxy do Seed (ADR-0007).
+# SITE_ADDRESS controla o endereco de escuta:
+#   dev  -> :80            (http://localhost)
+#   prod -> seu-dominio.com (Caddy emite TLS automaticamente)
+#
+# Same-origin: /api/* vai para a API; o resto vai para o frontend.
+# "handle_path" remove o prefixo /api antes de encaminhar, entao a API
+# recebe /health, /organizations, etc. (sem o /api na frente).
+
+{$SITE_ADDRESS::80} {
+	handle_path /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

@@ -1,74 +1,93 @@
 # Ambiente de Desenvolvimento Local (Windows) e Ponto de Retomada
 
 Este documento registra o estado das ferramentas na maquina de desenvolvimento,
-o passo pendente de instalacao do Docker e onde o trabalho parou, para facilitar
-a retomada.
+como rodar o projeto e onde o trabalho parou, para facilitar a retomada.
 
-Ultima atualizacao: 2026-07-17.
+Ultima atualizacao: 2026-07-18.
 
 ## Status das ferramentas
 
 | Ferramenta | Para que serve | Status |
 | --- | --- | --- |
 | Node.js v24.15.0 + npm 11.12.1 | Rodar o frontend (Next.js) | Instalado |
-| .NET SDK 10.0.302 | Criar e compilar o backend (ASP.NET Core). O SDK e o kit de desenvolvimento; sem ele so da para executar programas .NET prontos, nao criar novos | Instalado nesta sessao |
-| Docker Desktop | Empacotar e rodar tudo junto (backend, frontend, banco) em containers, conforme ADR-0007 | **PENDENTE** |
-| WSL2 | Linux enxuto dentro do Windows que o Docker usa como motor | **PENDENTE** (nao instalado) |
+| .NET SDK 10.0.302 | Criar e compilar o backend (ASP.NET Core) | Instalado |
+| Docker Desktop 29.6.1 + Compose v5.3.0 | Empacotar e rodar tudo junto (backend, frontend, banco) em containers, conforme ADR-0007 | Instalado |
+| WSL2 (distro `docker-desktop`) | Linux enxuto dentro do Windows que o Docker usa como motor | Instalado |
 
-## Passo pendente: instalar o Docker Desktop
+O ambiente completo esta pronto. Para reinstalar o Docker em outra maquina
+Windows, use `scripts/setup-docker-windows.cmd` (instala WSL2 + Docker Desktop;
+exige reinicio).
 
-O Docker depende do WSL2, e instalar o WSL2 exige reiniciar o computador. Por
-isso foi criado um script que faz a instalacao de uma vez.
+## Como rodar o projeto
 
-### Como executar
+### Stack completa em Docker
 
-1. Rode o script `scripts/setup-docker-windows.cmd` (dois cliques nele).
-   - Uma copia pronta para uso tambem esta em `c:\Users\sergi\pessoal\setup-docker.cmd`.
-2. Confirme a janela de permissao de administrador (UAC) com **Sim**.
-3. O script instala o WSL2 e o Docker Desktop via winget (leva alguns minutos).
-4. **Reinicie o computador** (necessario para o WSL2).
-5. Abra o **Docker Desktop**, aceite os termos e espere o status ficar
-   **"Engine running"** (motor rodando).
-
-### Como verificar que funcionou
-
-Abra um terminal e rode:
+Na raiz do repositorio:
 
 ```powershell
-docker --version
-docker compose version
+# 1. Crie o seu .env local a partir do exemplo (uma vez)
+Copy-Item .env.example .env   # e ajuste a senha do banco
+
+# 2. Suba tudo (db + api + web + proxy)
+docker compose up -d --build
+
+# 3. Acesse na mesma origem (via proxy Caddy):
+#    http://localhost/           -> frontend (Next.js)
+#    http://localhost/api/health -> backend (ASP.NET Core)
+
+# 4. Pare tudo
+docker compose down
 ```
 
-Se ambos responderem com uma versao, o Docker esta pronto.
+O `.env` NAO e versionado (contem segredos). O modelo versionado e `.env.example`.
 
-> O que o script faz por dentro: `wsl --install --no-distribution` (instala o
-> WSL2 sem uma distribuicao Linux extra, ja que o Docker traz a sua propria) e
-> `winget install Docker.DockerDesktop` (instala o Docker Desktop aceitando os
-> termos automaticamente).
+### Modo hibrido (iteracao rapida, sem rebuild de imagem)
 
-## Onde paramos e proximo passo
+Rode so o banco em Docker e as apps no host:
 
-- Todas as decisoes de arquitetura (ADR-0000 a ADR-0009) estao **Aceitas**. A
-  fundacao (Marco Zero) esta completa e nao ha decisoes pendentes.
-- **Proximo passo**: montar o *scaffold* (a estrutura inicial vazia) do monorepo:
-  - `apps/web`: frontend Next.js;
-  - `apps/api`: backend ASP.NET Core (projetos `Seed.Api`, `Seed.Application`,
-    `Seed.Domain`, `Seed.Infrastructure` mais os projetos de teste), conforme
-    ADR-0003;
-  - arquivos de Docker: `Dockerfile` de cada app, `docker-compose.yml` com
-    overrides, `Caddyfile` e `.env.example`, conforme ADR-0007.
-- Depois do scaffold: primeiro modulo `organizations` (escrever
-  `docs/modules/organizations.md` a partir do template e implementar a base de
-  tenancy: `Organization`, `User`, `OrganizationMembership` com ASP.NET Core
-  Identity), conforme ADR-0006 e ADR-0008.
+```powershell
+docker compose up -d db                       # banco em Docker (porta 5432 exposta)
+dotnet run --project apps/api/src/Seed.Api    # backend no host
+npm --prefix apps/web run dev                 # frontend no host
+```
 
-> Importante: o scaffold **nao depende do Docker** para ser criado e testado
-> (bastam Node.js e o .NET SDK, ja instalados). O Docker e necessario para rodar
-> o ambiente completo de forma padronizada e para o deploy. Ou seja, da para
-> avancar no scaffold em paralelo enquanto o Docker e instalado.
+### Prod-like
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Defina `SITE_ADDRESS=seu-dominio.com` no `.env` para o Caddy emitir HTTPS
+automaticamente.
+
+## Estado atual do codigo (scaffold concluido e verificado)
+
+O *scaffold* (estrutura inicial) do monorepo esta montado e verificado rodando:
+
+- `apps/api`: backend ASP.NET Core (.NET 10), solution modular `Seed.Api`,
+  `Seed.Application`, `Seed.Domain`, `Seed.Infrastructure` mais os projetos de
+  teste, com referencias em camadas (ADR-0003). Endpoint `/health` ativo.
+  `dotnet test` passa (inclui teste de integracao que sobe a API).
+- `apps/web`: frontend Next.js 16 + TypeScript + Tailwind (ADR-0002). Build ok,
+  0 vulnerabilidades no npm. Saida `standalone` para container.
+- Docker: `Dockerfile` de cada app, `docker-compose.yml` + overrides de dev e
+  prod, `Caddyfile` (same-origin) e `.env.example` (ADR-0007). Stack sobe com
+  todos os servicos `healthy` e o roteamento same-origin foi validado.
+
+## Proximo passo
+
+Primeiro modulo de negocio: **`organizations`** (a base de tenancy).
+
+1. Escrever `docs/modules/organizations.md` a partir de `docs/modules/_template.md`
+   (ADR-0008).
+2. Implementar as entidades `Organization`, `User` e `OrganizationMembership`
+   com ASP.NET Core Identity e o filtro de tenant (ADR-0005, ADR-0006).
+3. Ligar o Entity Framework Core ao PostgreSQL e criar a primeira migration
+   (ADR-0005).
 
 ## Sub-decisao ainda em aberto
 
 - Estrategia de **email transacional** (envio automatico de e-mails), necessaria
   para os fluxos de convite e recuperacao de senha da ADR-0006. Nao bloqueia o
-  scaffold, mas precisa ser definida antes de implementar esses fluxos.
+  modulo `organizations`, mas precisa ser definida antes de implementar convite e
+  recuperacao.
