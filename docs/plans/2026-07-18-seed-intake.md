@@ -211,40 +211,61 @@ segurança.
 
 ## Fontes de contexto
 
-Ao ativar, carregue e resuma:
+Ao ativar, carregue e resuma (todas lidas do worktree da `main` — ver "Backlog
+via worktree" para localizá-lo, chamado ali de `WT_MAIN`):
 
 - a memória `seed-project-status` (já vem na sessão);
-- o `backlog.md` **lido do worktree da main** (ver "Backlog via worktree");
-- os nomes dos arquivos em `docs/specs/` e `docs/plans/`;
-- o índice de ADRs em `docs/decisions/`.
+- o `backlog.md` em `<WT_MAIN>/docs/specs/backlog.md`;
+- os nomes dos arquivos em `<WT_MAIN>/docs/specs/` e `<WT_MAIN>/docs/plans/`;
+- o índice de ADRs em `<WT_MAIN>/docs/decisions/`.
+
+Ler tudo do mesmo `WT_MAIN` garante uma visão consistente do estado global,
+independentemente da branch de feature em que o usuário esteja.
 
 ## Backlog via worktree
 
-O `backlog.md` é estado global do projeto e vive na `main`. Leia e escreva nele
-através de um git worktree dedicado preso à `main`, para nunca sujar a branch de
-trabalho atual.
-
-- **Local do worktree:** `../seed-backlog` (irmão do repositório).
-- **Caminho do backlog no worktree:** `../seed-backlog/docs/specs/backlog.md`.
+O `backlog.md` é estado global do projeto e vive na `main`. Sempre trabalhe nele
+no worktree que está com a `main` — nunca na branch de feature atual. Use
+**caminhos absolutos** (a saída do git é absoluta e `..` depende do diretório
+atual, que a partir de um worktree de feature resolveria errado).
 
 Procedimento (sempre nesta ordem):
 
-1. **Se o usuário já está na `main` no repositório principal**, use o próprio
-   repositório (sem worktree): edite `docs/specs/backlog.md` e commite na main.
-   Detecte com `git branch --show-current`.
-2. **Senão, garanta o worktree** (checar antes de criar, para não dar erro):
-   - Verifique: `git worktree list` — procure uma linha com `../seed-backlog`
-     em `[main]`.
-   - Se não existir: `git worktree add ../seed-backlog main`.
-3. **Ler:** leia `../seed-backlog/docs/specs/backlog.md`.
-4. **Escrever:** edite esse arquivo no worktree, então:
+1. **Descubra o repositório principal** (`MAIN_REPO`): o pai do git-common-dir.
+   Force caminho absoluto (algumas versões do git retornam `.git` relativo):
    ```
-   git -C ../seed-backlog add docs/specs/backlog.md
-   git -C ../seed-backlog commit -m "chore(backlog): captura <slug>"
+   git rev-parse --path-format=absolute --git-common-dir   # .../seed/.git → MAIN_REPO = .../seed
    ```
-5. **Push (opcional):** se o usuário quiser sincronizar,
-   `git -C ../seed-backlog push origin main`. Para dev solo, o commit local já
-   garante que a ideia não se perde — pergunte antes de empurrar.
+
+2. **Ache o worktree que está com a `main`** (`WT_MAIN`):
+   ```
+   git worktree list
+   ```
+   `WT_MAIN` é o caminho **absoluto exato** da linha marcada `[main]` (use o que
+   você leu, não remonte à mão).
+   - Se a `main` estiver no próprio `MAIN_REPO` (usuário está na main), essa
+     linha será o próprio `MAIN_REPO` — edite/commite ali mesmo.
+   - Caso contrário, será o worktree dedicado (tipicamente
+     `<MAIN_REPO>/../seed-backlog`).
+
+3. **Se NENHUMA linha estiver `[main]`**, crie o worktree dedicado, ancorado no
+   `MAIN_REPO` (não no diretório atual):
+   ```
+   git -C "<MAIN_REPO>" worktree add ../seed-backlog main
+   ```
+   Agora `WT_MAIN = <MAIN_REPO>/../seed-backlog`. (A `main` só pode estar em um
+   worktree; por isso primeiro procuramos um existente e só criamos se não houver.)
+
+4. **Ler:** `<WT_MAIN>/docs/specs/backlog.md`.
+
+5. **Escrever + commit:** edite esse arquivo e commite no próprio `WT_MAIN`:
+   ```
+   git -C "<WT_MAIN>" add docs/specs/backlog.md
+   git -C "<WT_MAIN>" commit -m "chore(backlog): captura <slug>"
+   ```
+
+6. **Push (opcional):** para dev solo o commit local já garante que a ideia não
+   se perde — pergunte antes de empurrar: `git -C "<WT_MAIN>" push origin main`.
 
 Nunca commite o backlog na branch de feature atual.
 

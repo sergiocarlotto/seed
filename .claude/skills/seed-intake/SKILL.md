@@ -50,18 +50,21 @@ atual, que a partir de um worktree de feature resolveria errado).
 Procedimento (sempre nesta ordem):
 
 1. **Descubra o repositório principal** (`MAIN_REPO`): o pai do git-common-dir.
+   Force caminho absoluto (algumas versões do git retornam `.git` relativo):
    ```
-   git rev-parse --git-common-dir     # ex.: .../seed/.git  → MAIN_REPO = .../seed
+   git rev-parse --path-format=absolute --git-common-dir   # .../seed/.git → MAIN_REPO = .../seed
    ```
 
 2. **Ache o worktree que está com a `main`** (`WT_MAIN`):
    ```
    git worktree list
    ```
-   Pegue o caminho (absoluto) da linha marcada `[main]`.
-   - Se a `main` estiver no próprio `MAIN_REPO` (usuário está na main), então
-     `WT_MAIN = MAIN_REPO` — edite/commite ali mesmo.
-   - Se estiver no worktree dedicado, `WT_MAIN = <MAIN_REPO>/../seed-backlog`.
+   `WT_MAIN` é o caminho **absoluto exato** da linha marcada `[main]` (use o que
+   você leu, não remonte à mão).
+   - Se a `main` estiver no próprio `MAIN_REPO` (usuário está na main), essa
+     linha será o próprio `MAIN_REPO` — edite/commite ali mesmo.
+   - Caso contrário, será o worktree dedicado (tipicamente
+     `<MAIN_REPO>/../seed-backlog`).
 
 3. **Se NENHUMA linha estiver `[main]`**, crie o worktree dedicado, ancorado no
    `MAIN_REPO` (não no diretório atual):
