@@ -23,6 +23,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
   }, []);
 
+  // Ao cruzar para desktop (lg+), fecha a gaveta para não sobrepor a sidebar fixa.
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => {
+      if (mql.matches) setDrawerOpen(false);
+    };
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
   function toggleCollapsed() {
     setCollapsed((prev) => {
       const next = !prev;
@@ -31,9 +41,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   }
 
-  // Desktop: alterna recolhido. Mobile: a mesma tecla abre a gaveta. Como o
-  // desktop esconde o botão-gaveta via CSS, tratamos ambos: no desktop o
-  // `lg:` da sidebar decide a exibição; o toggle afeta a largura.
+  // O mesmo botão `menu-toggle` faz dupla função decidida em runtime por
+  // matchMedia: no desktop (lg+) alterna recolhido; no mobile abre a gaveta.
   function handleMenuClick() {
     // Abre a gaveta no mobile e alterna recolhido no desktop.
     if (window.matchMedia("(min-width: 1024px)").matches) {
@@ -44,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-dvh">
       {/* Sidebar fixa só no desktop (lg+) */}
       <aside
         className={cn(

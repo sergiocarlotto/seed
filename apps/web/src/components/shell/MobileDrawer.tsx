@@ -16,7 +16,11 @@ export function MobileDrawer({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-64 p-0" data-testid="mobile-drawer">
+      <SheetContent
+        side="left"
+        className="w-64 p-0 data-[side=left]:w-64"
+        data-testid="mobile-drawer"
+      >
         <SheetHeader className="sr-only">
           <SheetTitle>Menu de navegação</SheetTitle>
         </SheetHeader>
