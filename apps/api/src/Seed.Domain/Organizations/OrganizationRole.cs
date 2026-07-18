@@ -1,3 +1,3 @@
 namespace Seed.Domain.Organizations;
 
-public enum OrganizationRole { Owner = 0, Admin = 1, Member = 2 }
+public enum OrganizationRole { Admin = 0, Member = 1 }
