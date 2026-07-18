@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Application.Abstractions;
-using Seed.Application.Organizations;
+using Seed.Application.Companies;
 using Seed.Infrastructure.Email;
 using Seed.Infrastructure.Identity;
 using Seed.Infrastructure.Persistence;
@@ -26,7 +26,7 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<SeedDbContext>()
             .AddDefaultTokenProviders();
 
-        s.AddScoped<IOrganizationRepository, OrganizationRepository>();
+        s.AddScoped<ICompanyRepository, CompanyRepository>();
         s.AddScoped<IClock, SystemClock>();
         s.AddScoped<IEmailSender, NoOpEmailSender>();
         return s;
