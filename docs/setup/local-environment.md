@@ -74,22 +74,27 @@ O *scaffold* (estrutura inicial) do monorepo esta montado e verificado rodando:
   prod, `Caddyfile` (same-origin) e `.env.example` (ADR-0007). Stack sobe com
   todos os servicos `healthy` e o roteamento same-origin foi validado.
 
-## Modulo `organizations` (implementado — branch `feat/organizations-login-empresa`)
+## Modulo `organizations` — multiempresa (branch `feat/organizations-login-empresa`)
 
-O primeiro modulo de negocio esta implementado e verificado (2026-07-18):
-cadastro/login por email+senha (cookie httpOnly), CRUD de empresa
-(`Organization`) com isolamento por tenant, papeis owner/admin/member, migration
-`InitialCreate`, e testes de integracao (6/6 verdes, com Postgres real via
-Testcontainers). Frontend com telas de login, registro e CRUD de empresa.
+O primeiro modulo de negocio esta implementado no modelo multiempresa e
+verificado (2026-07-18): `Organization` (tenant) -> `Company` (varias por org) ->
+acesso explicito por usuario (`UserCompanyAccess`); login por email+senha (cookie
+httpOnly), CRUD de empresa restrito ao acesso, papeis `Admin`/`Member`, seed de
+dev (org Demo + admin + empresa), e testes de integracao (10/10 verdes com
+Postgres real). Frontend com shadcn/ui: login e CRUD de empresa. Sem auto-cadastro
+(organizacoes sao provisionadas por nos; super-admin no futuro).
 
-Plano executado: `docs/plans/2026-07-18-organizations-login-empresa.md`.
+Design/plano/decisoes: `docs/specs/2026-07-18-organizations-multiempresa-design.md`,
+`docs/plans/2026-07-18-organizations-multiempresa-rework.md`, ADR-0010 e ADR-0011.
 
 ### Como experimentar
 
 ```powershell
 docker compose up -d --build
-# abra http://localhost/register  -> crie uma conta (cria empresa + usuario owner)
-# depois gerencie empresas em http://localhost/companies
+# abra http://localhost/login e entre com o usuario semeado (Development):
+#   email:  admin@demo.local
+#   senha:  Admin123!
+# gerencie as empresas em http://localhost/companies (Admin cria/edita/exclui)
 docker compose down
 ```
 

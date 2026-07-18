@@ -4,6 +4,11 @@
 
 Aceita
 
+> Refinada pela [ADR-0010](ADR-0010-multi-company-model.md): `Organization`
+> permanece a raiz de tenancy e o muro de isolamento definidos aqui; a ADR-0010
+> detalha o nivel abaixo (multiplas `Company` por organizacao) e o escopo de
+> acesso por usuario (`UserCompanyAccess`). Nenhuma decisao desta ADR e revertida.
+
 ## Contexto
 
 O Seed precisa de uma base de dados que sustente um SaaS operacional com
