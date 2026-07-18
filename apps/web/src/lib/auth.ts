@@ -1,10 +1,8 @@
 import { api } from "./api";
-import type { Membership, User } from "./types";
+import type { Me } from "./types";
 
-export type MeResponse = { user: User; memberships: Membership[] };
-
-export function getMe(): Promise<MeResponse> {
-  return api.get<MeResponse>("/auth/me");
+export function getMe(): Promise<Me> {
+  return api.get<Me>("/auth/me");
 }
 
 export function logout(): Promise<void> {

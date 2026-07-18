@@ -4,17 +4,17 @@ export type User = {
   fullName: string;
 };
 
-export type Membership = {
-  organizationId: string;
-  organizationName: string;
-  role: string;
-};
-
-export type Organization = {
+export type Company = {
   id: string;
   name: string;
   status: string;
-  role: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type Me = {
+  user: User;
+  organizationId: string;
+  orgRole: string;
+  companies: Company[];
 };
