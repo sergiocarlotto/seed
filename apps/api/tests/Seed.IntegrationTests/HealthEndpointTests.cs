@@ -1,23 +1,15 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Seed.IntegrationTests;
 
-// Boots the whole API in-memory and checks the liveness endpoint.
-// Proves the host, DI and routing are wired up (ADR-0003).
-public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+// Boots the whole API in-memory (com Postgres real via ApiFactory) e checa o
+// endpoint de liveness. Prova que host, DI, routing e banco estão conectados.
+public class HealthEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public HealthEndpointTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory;
-    }
-
     [Fact]
     public async Task Health_endpoint_returns_ok()
     {
-        var client = _factory.CreateClient();
+        var client = factory.CreateClient();
 
         var response = await client.GetAsync("/health");
 
