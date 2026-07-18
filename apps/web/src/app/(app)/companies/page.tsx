@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
-import { getMe, logout } from "@/lib/auth";
 import type { Company } from "@/lib/types";
+import { useSession } from "@/lib/session";
+import { useSetPageHeader } from "@/lib/page-header";
+import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,33 +43,13 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function CompaniesPage() {
-  const router = useRouter();
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  useSetPageHeader({ title: "Empresas", breadcrumb: ["Administração", "Empresas"] });
+  const { companies: sessionCompanies, orgRole } = useSession();
+  const isAdmin = orgRole === "Admin";
+  const [companies, setCompanies] = useState<Company[]>(sessionCompanies);
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState<Company | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const me = await getMe();
-        if (active) {
-          setCompanies(me.companies);
-          setIsAdmin(me.orgRole === "Admin");
-        }
-      } catch (err) {
-        if (active) setError(errorMessage(err));
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   async function handleDelete() {
     if (!target) return;
@@ -85,41 +66,30 @@ export default function CompaniesPage() {
     }
   }
 
-  async function handleLogout() {
-    try {
-      await logout();
-    } catch {
-      // Mesmo se falhar, seguimos para o login.
-    }
-    router.push("/login");
-    router.refresh();
-  }
-
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Empresas</h1>
-        <Button variant="outline" size="sm" onClick={handleLogout}>
-          Sair
-        </Button>
-      </div>
-
+    <div className="flex flex-col gap-6">
       {isAdmin && (
         <div>
           <Button render={<Link href="/companies/new" />}>Nova empresa</Button>
         </div>
       )}
 
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
+      {error && <ErrorState message={error} onRetry={() => setError(null)} />}
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
-      ) : companies.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhuma empresa ainda.</p>
+      {companies.length === 0 ? (
+        <EmptyState
+          title="Nenhuma empresa ainda"
+          description={
+            isAdmin
+              ? "Crie a primeira empresa para começar."
+              : "Peça a um administrador para conceder acesso a uma empresa."
+          }
+          action={
+            isAdmin ? (
+              <Button render={<Link href="/companies/new" />}>Nova empresa</Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="rounded-xl ring-1 ring-foreground/10">
           <Table>
@@ -147,11 +117,7 @@ export default function CompaniesPage() {
                         >
                           Editar
                         </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setTarget(c)}
-                        >
+                        <Button variant="destructive" size="sm" onClick={() => setTarget(c)}>
                           Excluir
                         </Button>
                       </div>
@@ -183,6 +149,6 @@ export default function CompaniesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </main>
+    </div>
   );
 }
