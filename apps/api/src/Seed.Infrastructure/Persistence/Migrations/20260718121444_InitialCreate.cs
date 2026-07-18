@@ -32,6 +32,8 @@ namespace Seed.Infrastructure.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     FullName = table.Column<string>(type: "text", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrgRole = table.Column<int>(type: "integer", nullable: false),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -84,6 +86,23 @@ namespace Seed.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Organizations", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserCompanyAccesses",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserCompanyAccesses", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -193,13 +212,12 @@ namespace Seed.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Memberships",
+                name: "Companies",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Role = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -207,9 +225,9 @@ namespace Seed.Infrastructure.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Memberships", x => x.Id);
+                    table.PrimaryKey("PK_Companies", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Memberships_Organizations_OrganizationId",
+                        name: "FK_Companies_Organizations_OrganizationId",
                         column: x => x.OrganizationId,
                         principalTable: "Organizations",
                         principalColumn: "Id",
@@ -254,9 +272,19 @@ namespace Seed.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Memberships_OrganizationId_UserId",
-                table: "Memberships",
-                columns: new[] { "OrganizationId", "UserId" },
+                name: "IX_Companies_OrganizationId",
+                table: "Companies",
+                column: "OrganizationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserCompanyAccesses_UserId",
+                table: "UserCompanyAccesses",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserCompanyAccesses_UserId_CompanyId",
+                table: "UserCompanyAccesses",
+                columns: new[] { "UserId", "CompanyId" },
                 unique: true);
         }
 
@@ -282,7 +310,10 @@ namespace Seed.Infrastructure.Persistence.Migrations
                 name: "AuditEvents");
 
             migrationBuilder.DropTable(
-                name: "Memberships");
+                name: "Companies");
+
+            migrationBuilder.DropTable(
+                name: "UserCompanyAccesses");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

@@ -39,6 +39,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<SeedDbContext>().Database.Migrate();
+    await DataSeeder.SeedAsync(scope.ServiceProvider);
 }
 
 // TLS is terminated by the reverse proxy (Caddy) per ADR-0007, so the API
