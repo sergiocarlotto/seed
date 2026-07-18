@@ -17,13 +17,12 @@ arquitetura, planos de implementacao ou escolhas de dependencias.
 | [ADR-0005](ADR-0005-data-storage-and-ownership.md) | Aceita | Banco de dados, propriedade dos dados, persistencia, tenancy e auditoria |
 | [ADR-0006](ADR-0006-authentication-and-authorization.md) | Aceita | Autenticacao (ASP.NET Core Identity, email+senha, cookie httpOnly), papeis e tenancy |
 | [ADR-0007](ADR-0007-local-development-docker-and-deploy.md) | Aceita | Docker Compose (web/api/db/proxy Caddy), same-origin, migrations explicitas, deploy VPS |
+| [ADR-0008](ADR-0008-backend-module-documentation-standard.md) | Aceita | Padrao de documentacao dos modulos backend em `docs/modules/<module>.md` |
 | [ADR-0009](ADR-0009-ai-runtime-claude-code.md) | Aceita | Runtime de IA assistida: Claude Code; skills do projeto em `.claude/skills/` |
 
 ## Decisoes Pendentes
 
-| ADR | Status | Decisao |
-| --- | --- | --- |
-| [ADR-0008](ADR-0008-backend-module-documentation-standard.md) | Pendente | Padrao de documentacao dos modulos backend antes da implementacao |
+Nenhuma decisao pendente no momento.
 
 ## Como Alterar Uma Decisao
 
