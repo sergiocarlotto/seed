@@ -27,13 +27,16 @@ public class OrganizationService(
         return org is null ? null : Map(org, role.Value);
     }
 
-    public async Task<OrganizationDto> CreateAsync(CreateOrganizationRequest req, CancellationToken ct)
+    public Task<OrganizationDto> CreateAsync(CreateOrganizationRequest req, CancellationToken ct) =>
+        CreateAsync(UserId, req, ct);
+
+    public async Task<OrganizationDto> CreateAsync(Guid ownerUserId, CreateOrganizationRequest req, CancellationToken ct)
     {
         var now = clock.UtcNow;
         var org = new Organization { Name = req.Name.Trim(), CreatedAt = now, UpdatedAt = now };
         var membership = new OrganizationMembership
         {
-            OrganizationId = org.Id, UserId = UserId,
+            OrganizationId = org.Id, UserId = ownerUserId,
             Role = OrganizationRole.Owner, Status = MembershipStatus.Active,
             CreatedAt = now, UpdatedAt = now
         };
