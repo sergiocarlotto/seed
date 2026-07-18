@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Seed",
-  description: "Seed — cadastro, login e gestão de empresas",
+  description: "Seed — login e gestão de empresas",
 };
 
 export default function RootLayout({
