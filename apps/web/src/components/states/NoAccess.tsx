@@ -18,7 +18,10 @@ export function NoAccess({
   backLabel?: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-8 text-center">
+    <div
+      role="status"
+      className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-8 text-center"
+    >
       <Lock className="size-8 text-muted-foreground" />
       <div className="flex flex-col gap-1">
         <p className="font-medium">{title}</p>
