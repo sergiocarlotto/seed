@@ -109,7 +109,8 @@ namespace Seed.Infrastructure.Persistence.Migrations
                 name: "IX_Profiles_OrganizationId_Name",
                 table: "Profiles",
                 columns: new[] { "OrganizationId", "Name" },
-                unique: true);
+                unique: true,
+                filter: "\"DeletedAt\" IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserProfiles_ProfileId",

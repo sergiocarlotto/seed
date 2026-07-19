@@ -64,7 +64,7 @@ public class SeedDbContext(DbContextOptions<SeedDbContext> options)
         {
             e.Property(p => p.Name).IsRequired().HasMaxLength(200);
             e.Property(p => p.Description).HasMaxLength(500);
-            e.HasIndex(p => new { p.OrganizationId, p.Name }).IsUnique();
+            e.HasIndex(p => new { p.OrganizationId, p.Name }).IsUnique().HasFilter("\"DeletedAt\" IS NULL");
             e.HasQueryFilter(p => p.DeletedAt == null);
         });
 
