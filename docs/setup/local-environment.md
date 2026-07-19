@@ -3,7 +3,7 @@
 Este documento registra o estado das ferramentas na maquina de desenvolvimento,
 como rodar o projeto e onde o trabalho parou, para facilitar a retomada.
 
-Ultima atualizacao: 2026-07-18.
+Ultima atualizacao: 2026-07-19.
 
 ## Status das ferramentas
 
@@ -17,6 +17,47 @@ Ultima atualizacao: 2026-07-18.
 O ambiente completo esta pronto. Para reinstalar o Docker em outra maquina
 Windows, use `scripts/setup-docker-windows.cmd` (instala WSL2 + Docker Desktop;
 exige reinicio).
+
+## Gerar migrations do EF Core (contornando o Smart App Control)
+
+Nesta maquina o Windows esta com o **Smart App Control (SAC) LIGADO**
+(`HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy\VerifiedAndReputablePolicyState = 1`).
+Isso quebra o `dotnet ef migrations add/remove` rodado direto no host: a
+ferramenta carrega por reflexao o `Seed.Infrastructure.dll` recem-compilado (um
+assembly sem assinatura) e o SAC bloqueia esse carregamento. (`dotnet build`,
+`dotnet test` e `dotnet run` continuam funcionando — o bloqueio e especifico do
+carregamento por reflexao que o EF faz.)
+
+Nao vale desligar o SAC: ele **nao oferece exclusao por arquivo** e, uma vez
+desligado, so volta a ligar **resetando/reinstalando o Windows**. A saida e
+gerar as migrations dentro de um container Linux (.NET SDK), onde o SAC nao se
+aplica. Use o wrapper:
+
+```powershell
+# Gerar uma migration nova (os arquivos aparecem no host, via bind mount):
+scripts/ef.ps1 migrations add AddAccessControl -o Persistence/Migrations
+
+# Listar / remover a ultima:
+scripts/ef.ps1 migrations list
+scripts/ef.ps1 migrations remove --force   # --force pula a checagem de banco
+```
+
+O wrapper monta o repo em `mcr.microsoft.com/dotnet/sdk:10.0`, instala o
+`dotnet-ef`, restaura e roda o comando com `--project src/Seed.Infrastructure
+--startup-project src/Seed.Api`. Um volume nomeado (`seed-nuget`) faz cache dos
+pacotes entre execucoes.
+
+Detalhes importantes:
+
+- **Gerar migration nao toca no banco** (e offline). A APLICACAO acontece sozinha
+  quando a API sobe (`Database.Migrate()` em `Seed.Api/Program.cs`); nao ha passo
+  manual de `database update` no fluxo normal.
+- `migrations remove` sem `--force` tenta conectar no Postgres (que nao existe em
+  `localhost` dentro do container) e falha; use `--force`.
+- A regeneracao do `SeedDbContextModelSnapshot.cs` pelo EF 10.0.10 pode introduzir
+  diffs cosmeticos (ex.: `ToTable("X", (string)null)`); e esperado e inofensivo.
+- Este e o caminho oficial para as migrations dos planos de controle de acesso
+  (planos 2 e 3 em `docs/plans/`).
 
 ## Como rodar o projeto
 
