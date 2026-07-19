@@ -6,6 +6,8 @@ import { use, useEffect, useState } from "react";
 import CompanyForm from "@/components/CompanyForm";
 import { api, errorMessage } from "@/lib/api";
 import type { Company } from "@/lib/types";
+import { useSetPageHeader } from "@/lib/page-header";
+import { Loading, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,6 +24,7 @@ export default function EditCompanyPage({ params }: { params: Promise<{ id: stri
   // Next 16: `params` de páginas dinâmicas é uma Promise; em client component
   // usamos o hook `use` para resolvê-la.
   const { id } = use(params);
+  useSetPageHeader({ title: "Editar empresa", breadcrumb: ["Administração", "Empresas", "Editar"] });
   const router = useRouter();
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,20 +72,17 @@ export default function EditCompanyPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-col gap-6 px-4 py-10">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Editar empresa</h1>
+    <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
+      <div className="flex items-center justify-end gap-4">
         <Button variant="ghost" size="sm" render={<Link href="/companies" />}>
           Voltar
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
+        <Loading rows={2} />
       ) : error && !company ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+        <ErrorState message={error} />
       ) : company ? (
         <>
           <Card>
@@ -127,6 +127,6 @@ export default function EditCompanyPage({ params }: { params: Promise<{ id: stri
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </main>
+    </div>
   );
 }

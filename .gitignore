@@ -42,3 +42,6 @@ pgdata/
 Thumbs.db
 *.swp
 .idea/
+
+# Git worktrees locais
+/.worktrees/
