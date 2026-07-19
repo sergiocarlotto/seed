@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Seed.Application.Abstractions;
 using Seed.Application.AccessControl;
 using Seed.Application.Audit;
@@ -75,7 +76,7 @@ public class ProfileService(
             audit.Record(orgId, "access_control.profile.permission_granted", EntityType, profile.Id.ToString(),
                 new { permission_key = k, profile_name = name, old = false, @new = true });
 
-        await db.SaveChangesAsync(ct);
+        await SaveTranslatingDuplicateNameAsync(ct);
         return Map(profile, keys);
     }
 
@@ -118,7 +119,7 @@ public class ProfileService(
                 new { permission_key = k, profile_name = name, old = true, @new = false });
         }
 
-        await db.SaveChangesAsync(ct);
+        await SaveTranslatingDuplicateNameAsync(ct);
         return Map(profile, newKeys);
     }
 
@@ -130,13 +131,31 @@ public class ProfileService(
         if (profile.IsSystem) throw new ProfileValidationException("Perfil de sistema não pode ser arquivado.");
         if (profile.Status == ProfileStatus.Archived) return true;
 
+        var oldStatus = profile.Status.ToString();
         profile.Status = ProfileStatus.Archived;
         profile.UpdatedAt = clock.UtcNow;
         audit.Record(orgId, "access_control.profile.archived", EntityType, id.ToString(),
-            new { field = "status", old = "Active", @new = "Archived" });
+            new { field = "status", old = oldStatus, @new = ProfileStatus.Archived.ToString() });
 
         await db.SaveChangesAsync(ct);
         return true;
+    }
+
+    // O AnyAsync de nome único e o SaveChangesAsync não são atômicos: sob
+    // concorrência, duas requisições podem passar a checagem e colidir no índice
+    // único parcial (OrganizationId, Name) do Postgres. Traduz essa corrida
+    // (23505) para a mesma ProfileValidationException do caminho não-concorrente
+    // em vez de deixar vazar como 500.
+    private async Task SaveTranslatingDuplicateNameAsync(CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            throw new ProfileValidationException("Já existe um perfil com esse nome.");
+        }
     }
 
     private async Task<List<string>> KeysOfAsync(Guid profileId, CancellationToken ct) =>

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Application.AccessControl;
@@ -123,6 +124,32 @@ public class ProfilesTests(ApiFactory factory) : IClassFixture<ApiFactory>
         // O evento tem ator preenchido (o usuário logado).
         var hasActor = await db.AuditEvents.AnyAsync(a => a.EntityId == pid && a.ActorUserId != null);
         Assert.True(hasActor);
+
+        // Conteúdo do audit: o delta de "description" tem old/new corretos, e o
+        // JSON serializado usa a chave "new" (não "@new").
+        var events = await db.AuditEvents.Where(a => a.EntityId == pid).ToListAsync();
+        var descUpdate = events.Single(a =>
+            a.Action == "access_control.profile.updated"
+            && JsonDocument.Parse(a.Metadata!).RootElement.GetProperty("field").GetString() == "description");
+        var descMeta = JsonDocument.Parse(descUpdate.Metadata!).RootElement;
+        Assert.Equal("antes", descMeta.GetProperty("old").GetString());
+        Assert.Equal("depois", descMeta.GetProperty("new").GetString());
+
+        // Há dois grants no total (UsersManage na criação, ProfilesAssign na
+        // atualização); filtra pelo permission_key para pegar o da atualização.
+        var grantEvent = events.Single(a =>
+            a.Action == "access_control.profile.permission_granted"
+            && JsonDocument.Parse(a.Metadata!).RootElement.GetProperty("permission_key").GetString() == AccessControlPermissions.ProfilesAssign);
+        var grantMeta = JsonDocument.Parse(grantEvent.Metadata!).RootElement;
+        Assert.Equal(AccessControlPermissions.ProfilesAssign, grantMeta.GetProperty("permission_key").GetString());
+        Assert.False(grantMeta.GetProperty("old").GetBoolean());
+        Assert.True(grantMeta.GetProperty("new").GetBoolean());
+
+        var revokeEvent = events.Single(a => a.Action == "access_control.profile.permission_revoked");
+        var revokeMeta = JsonDocument.Parse(revokeEvent.Metadata!).RootElement;
+        Assert.Equal(AccessControlPermissions.UsersManage, revokeMeta.GetProperty("permission_key").GetString());
+        Assert.True(revokeMeta.GetProperty("old").GetBoolean());
+        Assert.False(revokeMeta.GetProperty("new").GetBoolean());
     }
 
     [Fact]
