@@ -41,6 +41,7 @@ public static class DependencyInjection
         s.AddHostedService<AccessControl.AccessControlBootstrapperHostedService>();
         s.AddScoped<IEffectivePermissions, AccessControl.EffectivePermissionsService>();
         s.AddScoped<IPermissionQuery, AccessControl.PermissionQuery>();
+        s.AddScoped<Seed.Application.Audit.IAuditLog, Audit.AuditLog>();
         return s;
     }
 }
