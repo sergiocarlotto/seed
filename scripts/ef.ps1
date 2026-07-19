@@ -54,6 +54,10 @@ dotnet restore src/Seed.Api/Seed.Api.csproj
 dotnet ef $argLine --project src/Seed.Infrastructure --startup-project src/Seed.Api --no-color
 "@
 
+# O here-string herda CRLF no checkout Windows; o bash dentro do container
+# quebra com o \r ao final de cada linha (ex.: `set -e\r`). Normaliza para LF.
+$inner = $inner -replace "`r`n", "`n"
+
 docker run --rm `
     -v "${repo}:/src" `
     -v "seed-nuget:/root/.nuget/packages" `
