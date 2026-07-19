@@ -24,7 +24,12 @@ arquitetura, planos de implementacao ou escolhas de dependencias.
 
 ## Decisoes Pendentes
 
-Nenhuma decisao pendente no momento.
+| ADR | Status | Decisao |
+| --- | --- | --- |
+| [ADR-0012](ADR-0012-configurable-profiles-and-permissions.md) | Proposta | Perfis configuraveis com permissoes por organizacao, substituindo os papeis fixos da ADR-0006 (modulo `AccessControl`) |
+
+Ao aceitar a ADR-0012, mover a linha acima para "Decisoes Aceitas" e marcar a
+ADR-0006 como "parcialmente substituida pela ADR-0012".
 
 ## Como Alterar Uma Decisao
 
