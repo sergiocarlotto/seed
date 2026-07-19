@@ -1,10 +1,12 @@
 "use client";
 
 import { Building2, Check, ChevronsUpDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -26,17 +28,20 @@ export function CompanySwitcher() {
 
   return (
     <DropdownMenu>
+      {/* O gatilho é o próprio <button> nativo do Base UI, estilizado como Button
+          (evita aninhar dois componentes-botão do Base UI). */}
       <DropdownMenuTrigger
-        render={
-          <Button variant="outline" size="sm" data-testid="company-switcher">
-            <Building2 />
-            <span className="max-w-[10rem] truncate">{active?.name ?? "Selecionar"}</span>
-            <ChevronsUpDown className="opacity-60" />
-          </Button>
-        }
-      />
+        data-testid="company-switcher"
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+      >
+        <Building2 />
+        <span className="max-w-[10rem] truncate">{active?.name ?? "Selecionar"}</span>
+        <ChevronsUpDown className="opacity-60" />
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Empresa ativa</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Empresa ativa</DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         {companies.map((c) => (
           <DropdownMenuItem
