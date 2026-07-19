@@ -26,7 +26,9 @@ alto de **segurança + arquitetura**.
 
 1. **Perfis substituem papéis.** `orgRole` (`Admin`/`Member`) sai. Toda
    autorização funcional passa a vir de perfis. `owner` deixa de ser papel e vira
-   um flag técnico (`is_owner`) de dono da organização.
+   um flag técnico (`is_owner`) de dono da organização, **gerido fora da
+   aplicação** (via banco no MVP; superadmin externo no futuro) — a aplicação
+   nunca cria, remove ou edita owner.
 2. **Abordagem de representação:** `Permission` é entidade no banco, mas o
    **código é a fonte de verdade**; a tabela é uma **projeção reconciliada no
    boot** (upsert idempotente). A foreign key `ProfilePermission → Permission` é
@@ -116,6 +118,13 @@ Três permissões **distintas** (isoláveis em perfis diferentes):
 - `profiles.assign` — **atribuir/remover** perfis dos usuários.
 - `users.manage` — gerir usuários (listar, ativar/desativar).
 
+**Aviso de segurança (postura B — ver "Segurança / anti-escalada"):**
+`profiles.manage` e `profiles.assign` são, no v1, **privilégios
+administrativos de fato**, não capacidades granulares inofensivas. Quem tem
+`profiles.manage` pode ampliar as permissões de um perfil que já possui
+(auto-escalada pela união); quem tem `profiles.assign` pode conceder perfis
+poderosos. Trate ambas como confiança de administrador.
+
 (O módulo `organizations` passa a declarar `companies.access` — ver/acessar a
 funcionalidade de empresas — e `companies.manage` — criar/editar/excluir. A
 visibilidade continua também condicionada ao eixo de empresa via
@@ -170,6 +179,11 @@ de outra org → 404.
 - `GET /users` — membros da org (nome, email, status, perfis, empresas).
 - `GET /users/{id}` — detalhe.
 - `PATCH /users/{id}/status` — ativar/desativar (soft; bloqueia acesso imediato).
+  **Recusa (4xx) desativar o owner.**
+
+O owner aparece na listagem, mas é **somente-leitura** (não desativável, perfis
+não editáveis pela app). `is_system`/`is_owner`/`organization_id`/`status` de
+perfil nunca são aceitos do corpo (allow-list — ver "Segurança / anti-escalada").
 
 **Sessão** (autenticado)
 - `GET /auth/me` — estende com `permissions` + empresas acessíveis.
@@ -180,12 +194,15 @@ Guardas de invariante retornam 4xx claro (ver Regras de negócio).
 
 - **Perfil-semente "Administrador":** `is_system`, todas as permissões `active`,
   atribuído ao owner. Não pode ser arquivado nem perder as meta-permissões.
-- **Owner:** `is_owner` sempre resolve `profiles.manage`, `profiles.assign` e
-  `users.manage`; a atribuição de perfis do owner nunca as remove. Owner tem
-  bypass funcional completo, mas continua sujeito ao eixo de empresa
-  (`UserCompanyAccess`).
-- **Org sempre administrável:** deve existir ≥1 usuário capaz de `profiles.manage`
-  (garantido pelo owner). Operações que violariam isso são rejeitadas.
+- **Owner:** tem bypass funcional completo, mas continua sujeito ao eixo de
+  empresa (`UserCompanyAccess`). É **gerido fora da aplicação** (banco no MVP;
+  superadmin externo depois).
+- **Owner é somente-leitura na app:** a gestão de usuários **não pode**
+  desativar o owner nem alterar os perfis dele; `is_owner` nunca é setado via
+  API. Como o owner é sempre um administrador ativo garantido, ele é o **piso**
+  que impede a organização de "trancar por dentro" (elimina o cenário de
+  last-admin lockout sem precisar de guard de contagem). Administradores
+  **não-owner** podem ser desativados normalmente.
 - **Arquivar perfil com usuários vinculados:** permitido. **Mantém o vínculo
   `UserProfile`**, mas o perfil `archived` **deixa de conceder** permissões (o
   enforcement ignora perfis não-`active`). Reversível ao reativar. A UI avisa
@@ -197,6 +214,66 @@ Guardas de invariante retornam 4xx claro (ver Regras de negócio).
   empresas do usuário são apenas **exibidas**.
 - **Member sem perfil:** usuário migrado de `orgRole=Member` fica **sem perfil**
   (zero permissão funcional) até receber um. Não há perfil "Membro" padrão.
+
+## Segurança / anti-escalada
+
+Sistema de perfis configuráveis tem como risco central a **escalada de
+privilégio**. Postura adotada no v1:
+
+- **Postura B — perfis `is_system` só são atribuíveis pelo owner.** O perfil
+  "Administrador" (todas as permissões) **não** pode ser atribuído por quem tem
+  apenas `profiles.assign`; só o owner o concede. Fecha a escalada trivial de
+  "atribuo Administrador a mim mesmo".
+- **`profiles.manage` e `profiles.assign` são privilégios administrativos** (ver
+  aviso na seção de permissões-semente). O v1 aceita que quem os detém é um
+  administrador de confiança; não há tentativa de torná-los granulares seguros
+  agora.
+- **Allow-list de campos (anti mass-assignment):** os campos `is_system`,
+  `status` (de perfil), `organization_id` e `is_owner` **nunca** são aceitos do
+  cliente; são definidos apenas pelo backend/seed/reconciliador. Enviá-los no
+  corpo é ignorado, nunca escala.
+- **Validação de tenant nos vínculos:** `PUT /users/{id}/profiles` rejeita (404)
+  qualquer `profile_id` fora da org do chamador e `user id` fora da org.
+
+**Melhoria futura registrada (postura A — não fazer agora):** evoluir para a
+regra "não conceder além de si" — um usuário só atribui perfis e define
+permissões contidas no seu próprio conjunto efetivo. Torna `profiles.manage`/
+`profiles.assign` genuinamente granulares e menos perigosas. Fica no backlog.
+
+## Auditoria
+
+Reusa o `AuditEvent` (ADR-0005). No v1 **emitimos** os eventos (custo baixo,
+volume pequeno); o **visualizador/gerenciador de auditoria** fica adiado
+(backlog) por exigir cuidado de escala e UI própria.
+
+**Contrato padronizado do `AuditEvent`** (para viabilizar relatórios
+transversais, ex.: "tudo que um usuário fez num período"). Campos mínimos
+consistentes entre todos os módulos:
+
+- `id`
+- `occurred_at` (UTC)
+- `organization_id` (escopo de tenant)
+- `actor_user_id` (quem executou) — chave dos relatórios por usuário
+- `action` — taxonomia `<módulo>.<entidade>.<verbo>` (ex.:
+  `access_control.profile.permissions_changed`)
+- `target_type` + `target_id` (ex.: `Profile` / `{id}`)
+- `details` (payload estruturado, ex.: delta de permissões adicionadas/removidas)
+
+Com `actor_user_id` + `occurred_at` + `organization_id` padronizados, o relatório
+"atividade de um usuário num intervalo" é uma consulta simples e indexável.
+
+**Eventos deste módulo a emitir:**
+
+- `access_control.profile.created` / `.updated` / `.archived` (com delta de
+  permissões no `updated`);
+- `access_control.user.profiles_assigned` (perfis atribuídos/removidos de um
+  usuário);
+- `access_control.user.activated` / `.deactivated`.
+
+**Nota de escopo:** padronizar o `AuditEvent` afeta **todos** os módulos (não só
+este) — é decisão de arquitetura e deve ser ratificada por ADR própria (ver
+"Trabalho de decisão pendente"). Este design adota o contrato acima como padrão
+de trabalho até a ADR formalizá-lo.
 
 ## UI (Next.js, shadcn/ui — ADR-0011)
 
@@ -255,15 +332,33 @@ Herda a lista da ADR-0006 e acrescenta específicos:
 - **reconciliador idempotente:** `key` sumida → `obsolete` e ignorada; reaparecida
   → `active`;
 - **FK** barra `permission_key` inexistente em `ProfilePermission`;
+- **anti-escalada (postura B):** usuário com só `profiles.assign` **não** atribui
+  perfil `is_system` ("Administrador") → negado;
+- **owner protegido:** não é possível desativar o owner nem editar seus perfis
+  pela app → bloqueado;
+- **allow-list:** `is_system`/`is_owner`/`organization_id`/`status` enviados no
+  corpo são ignorados (não escalam);
+- atribuir `profile_id` de outra org via `PUT /users/{id}/profiles` → 404;
+- **auditoria** registra alteração do conjunto de permissões de um perfil com
+  `actor_user_id` e delta;
 - integração com Postgres real (Testcontainers), como no módulo `organizations`.
 
 ## Trabalho de decisão pendente (fora deste design)
 
 - **Nova ADR** substituindo/estendendo a ADR-0006 (perfis configuráveis no lugar
   de papéis fixos; racional, tradeoffs, impacto de migração).
-- Revisão de **segurança** (`security-engineer`) antes de virar plano de
-  implementação — este design toca o coração da autorização.
+- **ADR de padronização do `AuditEvent`** (afeta todos os módulos): contrato
+  `actor_user_id`/`occurred_at`/`organization_id`/`action`/`target`/`details`
+  para viabilizar relatórios transversais. Este design já adota o contrato como
+  padrão de trabalho.
 - Documentação do módulo `AccessControl` em `docs/modules/` (padrão ADR-0008).
+
+**Revisão de segurança:** realizada (`security-engineer`). Achados críticos de
+escalada de privilégio resolvidos no design via **postura B** (perfis
+`is_system` só atribuíveis pelo owner; `profiles.manage`/`profiles.assign`
+tratados como privilégio administrativo), **owner externo somente-leitura** na
+app, **allow-list** de campos e **auditoria** das mutações sensíveis. A evolução
+para **postura A** ("não conceder além de si") fica no backlog.
 
 ## Fora de escopo (v1)
 
@@ -272,3 +367,6 @@ Herda a lista da ADR-0006 e acrescenta específicos:
 - Perfil escopado por empresa (preparado, não implementado).
 - UI de conceder/revogar acesso de empresa (pertence ao módulo `organizations`).
 - Perfis-modelo adicionais além do "Administrador".
+- **Visualizador/gerenciador de auditoria** (os eventos são emitidos no v1, mas a
+  UI de consulta/filtro/relatório fica no backlog — exige cuidado de escala).
+- **Postura A anti-escalada** ("não conceder além de si") — melhoria futura.

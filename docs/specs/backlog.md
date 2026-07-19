@@ -29,7 +29,7 @@ com link para o spec gerado, ou remova-a do backlog.
 ## Ideias
 
 ### gestao-usuarios-perfis-permissoes — CRUD de usuários e perfis de permissão
-- **Status:** pronto-p-brainstorm
+- **Status:** ✅ virou spec — `docs/specs/2026-07-19-access-control-perfis-permissoes-design.md` (brainstorming + revisão de segurança concluídos; próximo passo: nova ADR + plano)
 - **Capturado em:** 2026-07-19
 - **Relacionados:** ADR-0006 (auth/autorização, papéis fixos), ADR-0010 (multiempresa), docs/modules/organizations.md
 - **Descrição:** Telas/CRUD para gestão de usuários e um cadastro de "perfis
@@ -53,3 +53,33 @@ com link para o spec gerado, ou remova-a do backlog.
   tenant). Peso claro de **segurança + arquitetura**. `User` e o vínculo
   usuário↔organização já existem via `User`/`OrganizationMembership`; a novidade
   real é o modelo perfis+permissões, a granularidade e o enforcement backend.
+
+### auditoria-visualizador — Visualizador/gerenciador de auditoria
+- **Status:** ideia
+- **Capturado em:** 2026-07-19
+- **Relacionados:** ADR-0005 (AuditEvent), spec access-control (2026-07-19)
+- **Descrição:** UI para consultar, filtrar e exportar eventos de auditoria (ex.:
+  "tudo o que um usuário fez num período"). Os eventos já são emitidos pelos
+  módulos; falta a camada de leitura. Exige cuidado de **escala** (volume,
+  retenção, indexação, paginação) — por isso adiado. Depende do contrato
+  padronizado de `AuditEvent`.
+
+### auditevent-padronizacao — Padronização do AuditEvent (ADR)
+- **Status:** ideia
+- **Capturado em:** 2026-07-19
+- **Relacionados:** ADR-0005, spec access-control (2026-07-19)
+- **Descrição:** Formalizar por ADR o contrato comum de `AuditEvent` a todos os
+  módulos: `actor_user_id`, `occurred_at`, `organization_id`, `action`
+  (`<módulo>.<entidade>.<verbo>`), `target_type`/`target_id`, `details`. Habilita
+  relatórios transversais por usuário/período. O spec de access-control já adota
+  esse contrato como padrão de trabalho; a ADR o ratifica para o sistema.
+
+### acesso-postura-a — Anti-escalada "não conceder além de si" (postura A)
+- **Status:** ideia
+- **Capturado em:** 2026-07-19
+- **Relacionados:** spec access-control (2026-07-19)
+- **Descrição:** Evoluir o controle de acesso para a regra "um usuário só atribui
+  perfis e define permissões contidas no seu próprio conjunto efetivo". Torna
+  `profiles.manage`/`profiles.assign` genuinamente granulares e menos perigosas,
+  substituindo a postura B do v1 (que trata essas permissões como privilégio
+  administrativo e restringe só perfis `is_system`).
