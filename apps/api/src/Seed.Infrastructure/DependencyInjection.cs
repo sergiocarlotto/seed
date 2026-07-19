@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Application.Abstractions;
+using Seed.Application.AccessControl;
 using Seed.Application.Companies;
 using Seed.Infrastructure.Email;
 using Seed.Infrastructure.Identity;
@@ -30,6 +31,7 @@ public static class DependencyInjection
         s.AddScoped<IClock, SystemClock>();
         s.AddScoped<IEmailSender, NoOpEmailSender>();
         s.AddHostedService<AccessControl.PermissionCatalogReconcilerHostedService>();
+        s.AddScoped<IEffectivePermissions, AccessControl.EffectivePermissionsService>();
         return s;
     }
 }
