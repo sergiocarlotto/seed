@@ -59,6 +59,25 @@ Detalhes importantes:
 - Este e o caminho oficial para as migrations dos planos de controle de acesso
   (planos 2 e 3 em `docs/plans/`).
 
+## Rodar os testes (contornando o Smart App Control)
+
+O mesmo SAC bloqueia `dotnet test` no host: o `testhost` carrega o
+`Seed.Infrastructure.dll` recem-compilado (sem assinatura) e o SAC bloqueia
+(`System.IO.FileLoadException`, `0x800711C7`). Como o SAC avalia por hash, todo
+rebuild volta a ser bloqueado. Use o wrapper que roda `dotnet test` dentro do
+container Linux do .NET SDK:
+
+```powershell
+scripts/test.ps1                                              # suite completa
+scripts/test.ps1 --filter FullyQualifiedName~NomeDosTestes    # subconjunto
+```
+
+O wrapper monta o repo e o **socket do Docker do host** no container, e define
+`TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal` para o Testcontainers subir o
+Postgres real no host e o codigo de teste (dentro do container) alcanca-lo.
+`dotnet build` continua funcionando no host normalmente (o SAC so bloqueia o
+carregamento por reflexao do testhost/EF).
+
 ## Como rodar o projeto
 
 ### Stack completa em Docker
