@@ -242,38 +242,63 @@ permissões contidas no seu próprio conjunto efetivo. Torna `profiles.manage`/
 
 ## Auditoria
 
-Reusa o `AuditEvent` (ADR-0005). No v1 **emitimos** os eventos (custo baixo,
-volume pequeno); o **visualizador/gerenciador de auditoria** fica adiado
-(backlog) por exigir cuidado de escala e UI própria.
+Reusa o `AuditEvent` (ADR-0005) — a entidade **já existe** e já tem os campos do
+contrato: `Id`, `OrganizationId`, `ActorUserId`, `Action`, `EntityType`,
+`EntityId`, `OccurredAt`, `Metadata`. No v1 **emitimos** os eventos; o
+**visualizador/gerenciador de auditoria** fica adiado (backlog).
 
-**Contrato padronizado do `AuditEvent`** (para viabilizar relatórios
-transversais, ex.: "tudo que um usuário fez num período"). Campos mínimos
-consistentes entre todos os módulos:
+**Contrato padronizado (mapeado à entidade existente):**
 
-- `id`
-- `occurred_at` (UTC)
-- `organization_id` (escopo de tenant)
-- `actor_user_id` (quem executou) — chave dos relatórios por usuário
-- `action` — taxonomia `<módulo>.<entidade>.<verbo>` (ex.:
-  `access_control.profile.permissions_changed`)
-- `target_type` + `target_id` (ex.: `Profile` / `{id}`)
-- `details` (payload estruturado, ex.: delta de permissões adicionadas/removidas)
+- `OccurredAt` (UTC), `OrganizationId` (tenant), `ActorUserId` (quem executou —
+  chave dos relatórios por usuário);
+- `Action` — taxonomia `<módulo>.<entidade>.<verbo>`;
+- `EntityType` + `EntityId` (o alvo — ex.: `Profile` / `{id}`);
+- `Metadata` (JSON) — carrega o **antes/depois** de cada mudança (`old`/`new`).
 
-Com `actor_user_id` + `occurred_at` + `organization_id` padronizados, o relatório
-"atividade de um usuário num intervalo" é uma consulta simples e indexável.
+**Formato do `Metadata` — antes → depois (`old`/`new`).** Cada evento registra o
+valor velho e o novo, no grão fino (uma linha por permissão), para o relatório
+ler como "X mudou Y de A para B":
 
-**Eventos deste módulo a emitir:**
+- permissão de perfil (uma linha por permissão):
+  `access_control.profile.permission_granted` / `.permission_revoked` —
+  `EntityType=Profile`, `Metadata={ permission_key, profile_name, old, new }`;
+- edição de perfil (nome/descrição):
+  `access_control.profile.updated` — `Metadata={ field, old, new }`;
+- criação/arquivamento de perfil:
+  `access_control.profile.created` / `.archived`;
+- atribuição de perfil a usuário (uma linha por perfil):
+  `access_control.user.profile_assigned` / `.profile_removed` —
+  `EntityType=User`, `Metadata={ profile_id, profile_name, old, new }`;
+- ativar/desativar usuário:
+  `access_control.user.status_changed` — `Metadata={ field:"status", old, new }`.
 
-- `access_control.profile.created` / `.updated` / `.archived` (com delta de
-  permissões no `updated`);
-- `access_control.user.profiles_assigned` (perfis atribuídos/removidos de um
-  usuário);
-- `access_control.user.activated` / `.deactivated`.
+Limite assumido: guardamos o **diff** (old/new de cada mudança), não um snapshot
+completo do objeto por versão. Versionamento por snapshot é bem maior e fica no
+backlog.
 
-**Nota de escopo:** padronizar o `AuditEvent` afeta **todos** os módulos (não só
-este) — é decisão de arquitetura e deve ser ratificada por ADR própria (ver
-"Trabalho de decisão pendente"). Este design adota o contrato acima como padrão
-de trabalho até a ADR formalizá-lo.
+**Emissão:** **síncrona, na camada de application, dentro da mesma transação da
+mutação** (mesmo unit of work). Garante atomicidade (não há log perdido nem log
+de algo que não foi salvo) e simplicidade (sem pipeline assíncrono no MVP).
+Volume é baixo (mutações administrativas, não requests).
+
+**Arquitetura de armazenamento (preparado para escalar):**
+
+- Tabela **dedicada** `audit_events`, separada das tabelas operacionais — o
+  crescimento fica contido nela, sem pesar as consultas do produto.
+- **Append-only** (só insere; nunca update/delete) e **linha autossuficiente**
+  (ator, ação, alvo e `old`/`new` no `Metadata`; sem joins com tabelas
+  operacionais) — uma partição futura pode ser arquivada sozinha.
+- **Índices** casados com os relatórios: `(OrganizationId, OccurredAt)` e
+  `(ActorUserId, OccurredAt)`. `OccurredAt` é a futura chave de partição.
+- **Evolução (não agora, backlog):** particionamento nativo do PostgreSQL por
+  tempo (range mensal em `OccurredAt`) + política de retenção/arquivamento de
+  partições frias. É transparente à aplicação (mesma tabela), então adotável
+  depois sem retrabalho no módulo.
+
+**Nota de escopo:** padronizar o `AuditEvent` (formato `old`/`new`, taxonomia,
+retenção e particionamento) afeta **todos** os módulos — é decisão de arquitetura
+e deve ser ratificada por ADR própria (ver "Trabalho de decisão pendente"). Este
+design adota o contrato acima como padrão de trabalho até a ADR formalizá-lo.
 
 ## UI (Next.js, shadcn/ui — ADR-0011)
 

@@ -64,15 +64,22 @@ com link para o spec gerado, ou remova-a do backlog.
   retenção, indexação, paginação) — por isso adiado. Depende do contrato
   padronizado de `AuditEvent`.
 
-### auditevent-padronizacao — Padronização do AuditEvent (ADR)
+### auditevent-padronizacao — Padronização e escala do AuditEvent (ADR)
 - **Status:** ideia
 - **Capturado em:** 2026-07-19
 - **Relacionados:** ADR-0005, spec access-control (2026-07-19)
 - **Descrição:** Formalizar por ADR o contrato comum de `AuditEvent` a todos os
   módulos: `actor_user_id`, `occurred_at`, `organization_id`, `action`
-  (`<módulo>.<entidade>.<verbo>`), `target_type`/`target_id`, `details`. Habilita
-  relatórios transversais por usuário/período. O spec de access-control já adota
-  esse contrato como padrão de trabalho; a ADR o ratifica para o sistema.
+  (`<módulo>.<entidade>.<verbo>`), `target`/`entity`, e `metadata` no formato
+  **antes/depois (`old`/`new`)** por mudança. Habilita relatórios transversais
+  por usuário/período. Inclui a **estratégia de escala do armazenamento**:
+  tabela `audit_events` dedicada, append-only, autossuficiente e indexada por
+  `(org, occurred_at)` e `(actor, occurred_at)`; evolução para **particionamento
+  nativo do PostgreSQL por tempo** (range mensal em `occurred_at`) + política de
+  **retenção/arquivamento** de partições frias — transparente à aplicação. O spec
+  de access-control já adota o contrato como padrão de trabalho; a ADR o ratifica
+  e decide retenção/particionamento para o sistema. Snapshot/versionamento
+  completo por versão (além do diff) é item separado, se necessário.
 
 ### acesso-postura-a — Anti-escalada "não conceder além de si" (postura A)
 - **Status:** ideia
