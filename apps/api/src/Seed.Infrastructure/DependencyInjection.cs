@@ -31,6 +31,10 @@ public static class DependencyInjection
         s.AddScoped<IClock, SystemClock>();
         s.AddScoped<IEmailSender, NoOpEmailSender>();
         s.AddHostedService<AccessControl.PermissionCatalogReconcilerHostedService>();
+        // Deve vir DEPOIS do reconciliador (ordem de registro = ordem de start):
+        // o bootstrap concede "todas as permissões ativas" e precisa da tabela
+        // Permission já populada.
+        s.AddHostedService<AccessControl.AccessControlBootstrapperHostedService>();
         s.AddScoped<IEffectivePermissions, AccessControl.EffectivePermissionsService>();
         s.AddScoped<IPermissionQuery, AccessControl.PermissionQuery>();
         return s;
