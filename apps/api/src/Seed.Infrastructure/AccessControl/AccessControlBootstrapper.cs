@@ -9,6 +9,11 @@ namespace Seed.Infrastructure.AccessControl;
 // as permissões ativas, e marca os usuários orgRole=Admin como owner, ligando-os
 // ao perfil. Idempotente: roda todo boot sem duplicar. Deve rodar APÓS o
 // reconciliador do catálogo (precisa das permissões já projetadas na tabela).
+//
+// Premissa: cobre apenas as organizações e usuários já existentes no momento do
+// boot. Uma organização criada em runtime (ex.: futuro fluxo de onboarding) só
+// ganha o perfil "Administrador" no próximo boot, a menos que esse fluxo chame
+// AccessControlBootstrapper.SeedAsync explicitamente.
 public static class AccessControlBootstrapper
 {
     public const string AdminProfileName = "Administrador";
@@ -25,8 +30,11 @@ public static class AccessControlBootstrapper
         foreach (var orgId in orgIds)
         {
             // 1. Garante o perfil de sistema "Administrador" da organização.
+            // Lookup por (OrganizationId, IsSystem, Name), alinhado ao índice único
+            // (OrganizationId, Name) do Profile — evita ambiguidade se um dia
+            // existir mais de um perfil is_system por organização.
             var adminProfile = await db.Profiles
-                .FirstOrDefaultAsync(p => p.OrganizationId == orgId && p.IsSystem, ct);
+                .FirstOrDefaultAsync(p => p.OrganizationId == orgId && p.IsSystem && p.Name == AdminProfileName, ct);
             if (adminProfile is null)
             {
                 var now = DateTime.UtcNow;
@@ -41,7 +49,10 @@ public static class AccessControlBootstrapper
                     UpdatedAt = now,
                 };
                 db.Profiles.Add(adminProfile);
-                await db.SaveChangesAsync(ct); // materializa o Id
+                // O Id já é gerado no construtor de Entity (client-generated); este
+                // SaveChanges persiste o perfil antes de referenciá-lo nos vínculos
+                // (ProfilePermission/UserProfile) abaixo, não para obter o Id.
+                await db.SaveChangesAsync(ct);
             }
 
             // 2. Top-up: o "Administrador" concede todas as permissões ativas.

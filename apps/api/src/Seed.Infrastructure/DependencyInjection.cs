@@ -33,7 +33,11 @@ public static class DependencyInjection
         s.AddHostedService<AccessControl.PermissionCatalogReconcilerHostedService>();
         // Deve vir DEPOIS do reconciliador (ordem de registro = ordem de start):
         // o bootstrap concede "todas as permissões ativas" e precisa da tabela
-        // Permission já populada.
+        // Permission já populada. Se o reconciliador virar um BackgroundService
+        // (que não bloqueia StartAsync) ou esta linha for movida para antes dele,
+        // o "Administrador" seria semeado sem permissões. O teste
+        // Demo_org_has_system_admin_profile_with_all_active_permissions guarda
+        // esse caso: falha (activeKeys vazio) se essa ordem quebrar.
         s.AddHostedService<AccessControl.AccessControlBootstrapperHostedService>();
         s.AddScoped<IEffectivePermissions, AccessControl.EffectivePermissionsService>();
         s.AddScoped<IPermissionQuery, AccessControl.PermissionQuery>();

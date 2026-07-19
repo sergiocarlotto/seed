@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Domain.AccessControl;
+using Seed.Domain.Organizations;
 using Seed.Infrastructure.AccessControl;
 using Seed.Infrastructure.Persistence;
 
@@ -50,5 +51,55 @@ public class AccessControlBootstrapTests(ApiFactory factory) : IClassFixture<Api
         var linked = await db.UserProfiles
             .AnyAsync(up => up.UserId == adminUser.Id && up.ProfileId == adminProfile.Id);
         Assert.True(linked);
+    }
+
+    [Fact]
+    public async Task Member_does_not_become_owner_or_linked()
+    {
+        var orgId = await factory.GetDemoOrganizationIdAsync();
+        var email = $"member-{Guid.NewGuid():N}@demo.local";
+        await factory.CreateUserAsync(email, "Passw0rd!", orgId, OrganizationRole.Member);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+        await AccessControlBootstrapper.SeedAsync(db, default);
+
+        var member = await db.Users.FirstAsync(u => u.Email == email);
+        Assert.False(member.IsOwner);
+
+        var adminProfile = await db.Profiles
+            .FirstAsync(p => p.OrganizationId == orgId && p.IsSystem);
+        var linked = await db.UserProfiles
+            .AnyAsync(up => up.UserId == member.Id && up.ProfileId == adminProfile.Id);
+        Assert.False(linked);
+    }
+
+    [Fact]
+    public async Task Seeding_twice_is_idempotent()
+    {
+        var orgId = await factory.GetDemoOrganizationIdAsync();
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+
+        await AccessControlBootstrapper.SeedAsync(db, default);
+        await AccessControlBootstrapper.SeedAsync(db, default);
+
+        var systemProfiles = await db.Profiles
+            .Where(p => p.OrganizationId == orgId && p.IsSystem)
+            .ToListAsync();
+        Assert.Single(systemProfiles);
+        var adminProfile = systemProfiles[0];
+
+        var grantedCount = await db.ProfilePermissions
+            .CountAsync(pp => pp.ProfileId == adminProfile.Id);
+        var activeCount = await db.Permissions
+            .CountAsync(p => p.Status == PermissionStatus.Active);
+        Assert.Equal(activeCount, grantedCount);
+
+        var adminUser = await db.Users.FirstAsync(u => u.Email == ApiFactory.AdminEmail);
+        var linkedCount = await db.UserProfiles
+            .CountAsync(up => up.UserId == adminUser.Id && up.ProfileId == adminProfile.Id);
+        Assert.Equal(1, linkedCount);
     }
 }

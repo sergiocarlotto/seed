@@ -9,7 +9,8 @@ public class ApplicationUser : IdentityUser<Guid>
     public Guid OrganizationId { get; set; }
     public OrganizationRole OrgRole { get; set; } = OrganizationRole.Member;
 
-    // Dono da organização. Gerido fora da aplicação (banco/superadmin externo);
-    // nunca setado via API. Tem bypass funcional; é somente-leitura na gestão.
+    // Dono da organização. Semeado no boot para usuários orgRole=Admin pelo
+    // AccessControlBootstrapper (Seed.Infrastructure.AccessControl); nenhum
+    // endpoint de API o altera. Tem bypass funcional total.
     public bool IsOwner { get; set; }
 }
