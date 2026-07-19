@@ -31,6 +31,10 @@ builder.Services.ConfigureApplicationCookie(o =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider,
+    Seed.Api.Authorization.PermissionPolicyProvider>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+    Seed.Api.Authorization.PermissionAuthorizationHandler>();
 
 var app = builder.Build();
 
