@@ -29,16 +29,27 @@ com link para o spec gerado, ou remova-a do backlog.
 ## Ideias
 
 ### gestao-usuarios-perfis-permissoes — CRUD de usuários e perfis de permissão
-- **Status:** rascunho
+- **Status:** pronto-p-brainstorm
 - **Capturado em:** 2026-07-19
 - **Relacionados:** ADR-0006 (auth/autorização, papéis fixos), ADR-0010 (multiempresa), docs/modules/organizations.md
 - **Descrição:** Telas/CRUD para gestão de usuários e um cadastro de "perfis
   de usuário" ao qual o usuário é vinculado, carregando um conjunto de permissões.
+  Detalhes definidos com o usuário:
+  - **Perfis são por organização** (cada org define os seus).
+  - **Gerir perfis é, ela mesma, uma permissão** (meta-permissão): um perfil com
+    ela permite criar/editar perfis e atribuir permissões.
+  - **Granularidade evolutiva:** começa por funcionalidade (item de menu) e deve
+    poder evoluir para nível de ação — verbos básicos como `ver`,
+    `criar/editar`, `excluir`.
+  - **Regras de negócio cercadas por permissão**, indo além de RBAC simples:
+    posse/escopo (ex.: editar só as tarefas que a pessoa criou, não as de outro
+    projeto sem permissão) e nível de campo (ex.: um perfil pode editar o campo
+    "executor" de uma tarefa, outro não). Isso encosta em ABAC/field-level.
   **Atenção:** conflita com a ADR-0006, que define papéis fixos (`owner`, `admin`,
-  `member`) e deixa permissões granulares/configuráveis fora do MVP. Um cadastro
-  de perfis com permissões próprias é RBAC configurável e exigiria uma nova ADR
-  substituindo/estendendo a ADR-0006 (racional, tradeoffs, migração). Tem peso
-  claro de **segurança + arquitetura**. Parte da entidade `User` e o vínculo
+  `member`) e deixa **explicitamente** fora do MVP permissões granulares por
+  campo/recurso. Este desenho é mais amplo (RBAC configurável + posse +
+  field-level) e exigiria uma **nova ADR** substituindo/estendendo a ADR-0006
+  (racional, tradeoffs, migração dos papéis atuais, impacto no enforcement de
+  tenant). Peso claro de **segurança + arquitetura**. `User` e o vínculo
   usuário↔organização já existem via `User`/`OrganizationMembership`; a novidade
-  real é o modelo de perfis+permissões e o enforcement backend. Amadurecer via
-  brainstorming antes de qualquer implementação.
+  real é o modelo perfis+permissões, a granularidade e o enforcement backend.
