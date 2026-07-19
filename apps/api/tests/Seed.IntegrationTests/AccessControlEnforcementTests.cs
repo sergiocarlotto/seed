@@ -87,6 +87,54 @@ public class AccessControlEnforcementTests(ApiFactory factory) : IClassFixture<A
     }
 
     [Fact]
+    public async Task Effective_permissions_ignore_obsolete_permission()
+    {
+        var (userId, orgId) = await CreateUserAsync(factory, "obsolete@demo.local");
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+
+        // Precisa existir na tabela Permission (FK de ProfilePermission) antes
+        // de ser concedida ao perfil.
+        const string obsoleteKey = "temp.obsolete";
+        db.Permissions.Add(new Permission
+        {
+            Key = obsoleteKey, Module = "temp", DisplayName = "Temp Obsoleta",
+            Description = "Permissão obsoleta para teste.", Status = PermissionStatus.Obsolete,
+        });
+        await db.SaveChangesAsync();
+
+        await GiveProfileAsync(db, orgId, userId, "Com Obsoleta", ProfileStatus.Active, obsoleteKey);
+
+        var resolver = new Seed.Infrastructure.AccessControl.EffectivePermissionsService(
+            db, new FixedCurrentUser(userId));
+        var perms = await resolver.ForCurrentUserAsync(default);
+
+        Assert.DoesNotContain(obsoleteKey, perms);
+    }
+
+    [Fact]
+    public async Task Effective_permissions_exclude_soft_deleted_profile()
+    {
+        var (userId, orgId) = await CreateUserAsync(factory, "softdeleted@demo.local");
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+        await GiveProfileAsync(db, orgId, userId, "Sera Deletado", ProfileStatus.Active,
+            AccessControlPermissions.ProfilesManage);
+
+        var profile = await db.Profiles.FirstAsync(p => p.Name == "Sera Deletado");
+        profile.DeletedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        var resolver = new Seed.Infrastructure.AccessControl.EffectivePermissionsService(
+            db, new FixedCurrentUser(userId));
+        var perms = await resolver.ForCurrentUserAsync(default);
+
+        Assert.DoesNotContain(AccessControlPermissions.ProfilesManage, perms); // perfil soft-deleted
+    }
+
+    [Fact]
     public async Task Get_permissions_requires_authentication()
     {
         var client = factory.CreateClient();

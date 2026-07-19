@@ -9,23 +9,32 @@ namespace Seed.Infrastructure.AccessControl;
 public class EffectivePermissionsService(SeedDbContext db, ICurrentUser currentUser)
     : IEffectivePermissions
 {
+    // Memoização por request: o serviço é scoped (uma instância por request),
+    // então o resultado pode ser reaproveitado entre chamadas do mesmo request
+    // sem comprometer a revogação imediata (o cache morre com o request).
+    private IReadOnlySet<string>? _cache;
+
     public async Task<IReadOnlySet<string>> ForCurrentUserAsync(CancellationToken ct)
     {
-        var userId = currentUser.UserId;
-        if (userId is null) return new HashSet<string>();
+        if (_cache is not null) return _cache;
 
-        var user = await db.Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
-        if (user is null) return new HashSet<string>();
+        var userId = currentUser.UserId;
+        if (userId is null) return _cache = new HashSet<string>();
+
+        var isOwner = await db.Users
+            .Where(u => u.Id == userId.Value)
+            .Select(u => (bool?)u.IsOwner)
+            .FirstOrDefaultAsync(ct);
+        if (isOwner is null) return _cache = new HashSet<string>();
 
         // Owner: bypass funcional total (todas as permissões ativas do catálogo).
-        if (user.IsOwner)
+        if (isOwner.Value)
         {
             var all = await db.Permissions
                 .Where(p => p.Status == PermissionStatus.Active)
                 .Select(p => p.Key)
                 .ToListAsync(ct);
-            return all.ToHashSet();
+            return _cache = all.ToHashSet();
         }
 
         // União das permissões ativas dos perfis ATIVOS (o query filter de
@@ -42,7 +51,7 @@ public class EffectivePermissionsService(SeedDbContext db, ICurrentUser currentU
             select perm.Key
         ).Distinct().ToListAsync(ct);
 
-        return keys.ToHashSet();
+        return _cache = keys.ToHashSet();
     }
 
     public async Task<bool> HasAsync(string permissionKey, CancellationToken ct)
