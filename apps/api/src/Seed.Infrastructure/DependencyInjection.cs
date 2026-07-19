@@ -32,6 +32,7 @@ public static class DependencyInjection
         s.AddScoped<IEmailSender, NoOpEmailSender>();
         s.AddHostedService<AccessControl.PermissionCatalogReconcilerHostedService>();
         s.AddScoped<IEffectivePermissions, AccessControl.EffectivePermissionsService>();
+        s.AddScoped<IPermissionQuery, AccessControl.PermissionQuery>();
         return s;
     }
 }
