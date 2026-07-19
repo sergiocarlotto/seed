@@ -29,6 +29,7 @@ public static class DependencyInjection
         s.AddScoped<ICompanyRepository, CompanyRepository>();
         s.AddScoped<IClock, SystemClock>();
         s.AddScoped<IEmailSender, NoOpEmailSender>();
+        s.AddHostedService<AccessControl.PermissionCatalogReconcilerHostedService>();
         return s;
     }
 }
