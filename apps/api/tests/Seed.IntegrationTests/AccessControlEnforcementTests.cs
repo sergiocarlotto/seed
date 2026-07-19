@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Application.AccessControl;
@@ -83,6 +84,61 @@ public class AccessControlEnforcementTests(ApiFactory factory) : IClassFixture<A
         Assert.Contains(AccessControlPermissions.ProfilesManage, perms);
         Assert.Contains(AccessControlPermissions.ProfilesAssign, perms);
         Assert.Contains(AccessControlPermissions.UsersManage, perms);
+    }
+
+    [Fact]
+    public async Task Get_permissions_requires_authentication()
+    {
+        var client = factory.CreateClient();
+        var resp = await client.GetAsync("/permissions");
+        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_permissions_forbidden_without_permission()
+    {
+        await CreateUserAsync(factory, "noperm@demo.local");
+        var client = await factory.CreateLoggedInClientAsync("noperm@demo.local", "Passw0rd!");
+
+        var resp = await client.GetAsync("/permissions");
+        Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_permissions_ok_with_profiles_manage()
+    {
+        var (userId, orgId) = await CreateUserAsync(factory, "canlist@demo.local");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+            await GiveProfileAsync(db, orgId, userId, "Gestor de Perfis", ProfileStatus.Active,
+                AccessControlPermissions.ProfilesManage);
+        }
+
+        var client = await factory.CreateLoggedInClientAsync("canlist@demo.local", "Passw0rd!");
+        var resp = await client.GetAsync("/permissions");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+
+        var groups = await resp.Content.ReadFromJsonAsync<List<PermissionGroupDto>>();
+        Assert.NotNull(groups);
+        Assert.Contains(groups!, g => g.Permissions.Any(p => p.Key == AccessControlPermissions.ProfilesManage));
+    }
+
+    [Fact]
+    public async Task Get_permissions_ok_for_owner_without_profile()
+    {
+        var (userId, _) = await CreateUserAsync(factory, "ownerlist@demo.local");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+            var user = await db.Users.FirstAsync(u => u.Id == userId);
+            user.IsOwner = true;
+            await db.SaveChangesAsync();
+        }
+
+        var client = await factory.CreateLoggedInClientAsync("ownerlist@demo.local", "Passw0rd!");
+        var resp = await client.GetAsync("/permissions");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
     }
 
     // ICurrentUser fixo para testar o serviço fora do pipeline HTTP.
