@@ -2,7 +2,11 @@
 
 ## Status
 
-Aceita
+Aceita (parcialmente substituida pela ADR-0012)
+
+A parte de autorizacao por papeis fixos (`owner`/`admin`/`member`) foi
+substituida pela ADR-0012 (perfis configuraveis com permissoes). Autenticacao,
+sessao em cookie httpOnly, convite/recuperacao e auditoria permanecem validos.
 
 ## Contexto
 
