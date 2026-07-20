@@ -126,3 +126,33 @@ com link para o spec gerado, ou remova-a do backlog.
   `text-foreground`) e nunca cores literais (`bg-blue-600`) — disciplina que
   precisa valer desde já. Quando amadurecer, deve virar a **ADR do design system**
   prevista na ADR-0011.
+
+### agendamento-servicos-profissionais — Módulo de agendamento de serviços (profissionais + tarefas agendadas)
+- **Status:** ideia
+- **Capturado em:** 2026-07-19
+- **Relacionados:** marco-zero (entidade **Tarefa**, "Tarefas Operacionais"
+  avulsas), módulo de controle de acesso (`AccessControl` / ADR-0012, vínculo
+  profissional↔usuário), ADR-0010 (multiempresa)
+- **Descrição:** Módulo dedicado ao **agendamento de serviços**: cadastrar
+  **profissionais** e atribuir a eles tarefas/serviços com **horário agendado**,
+  reutilizando a mesma estrutura de Tarefa que atende projetos — mas para
+  serviços avulsos com hora marcada. **Encaixe/insight:** a Tarefa da fundação
+  já é reutilizável para trabalho avulso (o marco-zero prevê "tarefas vinculadas
+  a projetos ou independentes"), então reaproveitar a estrutura não conflita com
+  nada. A novidade real são três pontos ainda não modelados:
+  (1) **agendamento ≠ prazo** — a Tarefa hoje tem `prazo` (deadline); serviço
+  agendado precisa de um **slot de tempo** (início/fim/duração) num calendário.
+  Encaixe natural: Tarefa ganha um **agendamento opcional (appointment)**, sem
+  trocar o modelo, para projeto e serviço avulso compartilharem a entidade.
+  (2) **"Profissional" é conceito novo** e a decisão-chave é se ele é sempre um
+  `User` (faz login) ou um **recurso agendável** que pode não ter conta (prestador
+  externo só agendado) — escolha que encosta direto no módulo de controle de
+  acesso em construção e muda o modelo de dados.
+  (3) **Calendário traz regras próprias**: disponibilidade do profissional,
+  **conflito de horários** e visão de agenda — o que justifica um módulo
+  dedicado, não só um campo extra na Tarefa.
+  **Atenção:** peso claro de **arquitetura**. As decisões "Tarefa única com
+  agendamento opcional vs. entidades separadas com base comum" e "Profissional =
+  User vs. recurso à parte" tocam a entidade central Tarefa e o modelo
+  multiempresa (ADR-0010); ao amadurecer, pedem o `software-architect` e
+  provavelmente uma **nova ADR**.
