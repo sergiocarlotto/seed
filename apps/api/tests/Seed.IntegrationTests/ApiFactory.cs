@@ -126,6 +126,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             FullName = userEmail,
             OrganizationId = org.Id,
             OrgRole = OrganizationRole.Admin,
+            IsOwner = true, // owner da nova org (gerido fora da app; bootstrap só roda no boot)
         };
         var result = await users.CreateAsync(user, userPassword);
         if (!result.Succeeded)
