@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Seed.Application.Abstractions;
 using Seed.Application.AccessControl;
 using Seed.Application.Audit;
@@ -60,7 +61,7 @@ public class UserService(
         }
 
         var list = await BuildAsync(orgId, onlyUserId: id, ct);
-        return list[0];
+        return list.Count == 0 ? null : list[0];
     }
 
     public async Task<UserDto?> SetProfilesAsync(Guid id, AssignProfilesRequest req, CancellationToken ct)
@@ -76,11 +77,10 @@ public class UserService(
         var requested = (req.ProfileIds ?? []).Distinct().ToList();
 
         // Todos os profile_id pedidos precisam ser da org (senão 404 — não vaza).
-        var requestedInOrg = requested.Count == 0
-            ? new List<Guid>()
-            : await db.Profiles.Where(p => requested.Contains(p.Id) && p.OrganizationId == orgId)
-                .Select(p => p.Id).ToListAsync(ct);
-        if (requestedInOrg.Count != requested.Count)
+        var requestedInOrgCount = requested.Count == 0
+            ? 0
+            : await db.Profiles.CountAsync(p => requested.Contains(p.Id) && p.OrganizationId == orgId, ct);
+        if (requestedInOrgCount != requested.Count)
             throw new UserNotFoundException("Perfil inexistente nesta organização.");
 
         var current = await db.UserProfiles.Where(up => up.UserId == id)
@@ -107,21 +107,39 @@ public class UserService(
         {
             db.UserProfiles.Add(new UserProfile { UserId = id, ProfileId = pid });
             audit.Record(orgId, "access_control.user.profile_assigned", EntityType, id.ToString(),
-                new { profile_id = pid, profile_name = meta[pid].Name, old = false, @new = true });
+                new { profile_id = pid, profile_name = meta.TryGetValue(pid, out var m) ? m.Name : null, old = false, @new = true });
         }
         foreach (var pid in toRemove)
         {
-            var row = await db.UserProfiles.FirstAsync(up => up.UserId == id && up.ProfileId == pid, ct);
-            db.UserProfiles.Remove(row);
+            // Remove por entidade-stub (PK composta), sem SELECT prévio — evita o
+            // N+1 e o FirstAsync que estouraria sob remoção concorrente.
+            db.UserProfiles.Remove(new UserProfile { UserId = id, ProfileId = pid });
             audit.Record(orgId, "access_control.user.profile_removed", EntityType, id.ToString(),
-                new { profile_id = pid, profile_name = meta[pid].Name, old = true, @new = false });
+                new { profile_id = pid, profile_name = meta.TryGetValue(pid, out var m) ? m.Name : null, old = true, @new = false });
         }
 
         if (toAdd.Count > 0 || toRemove.Count > 0)
-            await db.SaveChangesAsync(ct);
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+            {
+                // Corrida de atribuição idêntica: outra requisição concorrente já
+                // inseriu o mesmo vínculo (viola a PK composta). Traduz para 409.
+                throw new UserConflictException("Conflito ao atualizar os perfis. Tente novamente.");
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Corrida de remoção: a linha alvo já havia sido removida
+                // concorrentemente (0 linhas afetadas). Traduz para 409.
+                throw new UserConflictException("Conflito ao atualizar os perfis. Tente novamente.");
+            }
+        }
 
         var list = await BuildAsync(orgId, onlyUserId: id, ct);
-        return list[0];
+        return list.Count == 0 ? null : list[0];
     }
 
     // Monta os UserDto (usuário + chips de perfis e empresas) com poucas queries

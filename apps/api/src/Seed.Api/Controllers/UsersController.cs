@@ -49,5 +49,6 @@ public class UsersController(IUserService service) : ControllerBase
         catch (UserValidationException ex) { return BadRequest(new { error = ex.Message }); }
         catch (UserForbiddenException) { return Forbid(); }
         catch (UserNotFoundException) { return NotFound(); }
+        catch (UserConflictException ex) { return Conflict(new { error = ex.Message }); }
     }
 }
