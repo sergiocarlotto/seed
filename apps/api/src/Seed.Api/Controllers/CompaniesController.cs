@@ -36,6 +36,7 @@ public class CompaniesController(ICompanyService service) : ControllerBase
     [RequirePermission(CompaniesPermissions.Manage)]
     public async Task<IActionResult> Update(Guid id, UpdateCompanyRequest req, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { error = "Nome obrigatório." });
         var c = await service.UpdateAsync(id, req, ct);
         return c is null ? NotFound() : Ok(c);
     }

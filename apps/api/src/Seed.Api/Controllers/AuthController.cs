@@ -48,8 +48,14 @@ public class AuthController(
     public async Task<IActionResult> Me(CancellationToken ct)
     {
         var user = await userManager.FindByIdAsync(currentUser.UserId!.ToString()!);
-        var companies = await companyService.ListAsync(ct);
         var permissions = await effective.ForCurrentUserAsync(ct);
+        // Espelho de UX: só devolve as empresas se o usuário tem a permissão
+        // funcional companies.access. Usuário desativado tem permissão efetiva
+        // vazia → recebe lista vazia aqui também (fecha o vazamento apontado no
+        // review do 3d), sem depender de o frontend esconder.
+        var companies = permissions.Contains(CompaniesPermissions.Access)
+            ? await companyService.ListAsync(ct)
+            : new List<CompanyDto>();
         return Ok(new
         {
             user = new { user!.Id, user.Email, user.FullName },
