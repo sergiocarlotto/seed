@@ -175,3 +175,16 @@ com link para o spec gerado, ou remova-a do backlog.
   como três entidades" tocam a entidade central Tarefa e o modelo multiempresa
   (ADR-0010); ao amadurecer, pedem o `software-architect` e provavelmente uma
   **nova ADR**.
+  **Nota de pesquisa — UI de calendário (não implementar do zero):** o calendário
+  visual/scheduler deve **reusar uma biblioteca open source permissiva** e
+  editável, nunca ser construído do zero (regra de portabilidade: OSS permissiva,
+  sem lock-in, roda em VPS). Achado-chave da pesquisa (2026): a **visão por
+  recurso/profissional** (profissional = linha/coluna na timeline) é justamente o
+  **recurso pago** das libs grandes — FullCalendar Scheduler (comercial, ~US$480/ano),
+  Schedule-X resource scheduler (premium), MUI X Event Timeline (Premium, beta).
+  Opções **genuinamente livres com visão de recurso**: **react-big-schedule** (MIT)
+  e **DayPilot Lite for React** (open source, colunas por pessoa). MUI X Event
+  Calendar Community (MIT) serve se não for exigida timeline horizontal de recurso.
+  **Evitar Cal.com** como base de código (é app completo e **AGPL** — copyleft de
+  rede, conflita com portabilidade/SaaS). Escolha final = decisão de arquitetura
+  (`software-architect` + ADR de dependência) na maturação.
