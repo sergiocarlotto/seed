@@ -69,9 +69,10 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return org.Id;
     }
 
-    // Cria um usuário (com senha) numa organização existente, com o papel dado.
-    // Não concede acesso a nenhuma empresa (útil para Member sem acesso).
-    public async Task CreateUserAsync(string email, string password, Guid organizationId, OrganizationRole role)
+    // Cria um usuário (com senha) numa organização existente. isOwner=false por
+    // padrão (usuário comum, sem perfil e sem bypass). Não concede acesso a
+    // nenhuma empresa.
+    public async Task CreateUserAsync(string email, string password, Guid organizationId, bool isOwner = false)
     {
         using var scope = Services.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -82,7 +83,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             EmailConfirmed = true,
             FullName = email,
             OrganizationId = organizationId,
-            OrgRole = role,
+            IsOwner = isOwner,
         };
         var result = await users.CreateAsync(user, password);
         if (!result.Succeeded)
@@ -125,7 +126,6 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             EmailConfirmed = true,
             FullName = userEmail,
             OrganizationId = org.Id,
-            OrgRole = OrganizationRole.Admin,
             IsOwner = true, // owner da nova org (gerido fora da app; bootstrap só roda no boot)
         };
         var result = await users.CreateAsync(user, userPassword);

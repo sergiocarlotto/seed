@@ -1,5 +1,5 @@
-using Seed.Domain.Organizations;
-
 namespace Seed.Application.Companies;
 
-public record UserContext(Guid OrganizationId, OrganizationRole OrgRole);
+// Contexto mínimo do usuário para o serviço de empresas: a organização (tenant)
+// sob a qual ele opera. A autorização funcional é feita pelo gate de permissão.
+public record UserContext(Guid OrganizationId);

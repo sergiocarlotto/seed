@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Application.AccessControl;
 using Seed.Domain.AccessControl;
-using Seed.Domain.Organizations;
 using Seed.Infrastructure.Persistence;
 
 namespace Seed.IntegrationTests;
@@ -19,7 +18,7 @@ public class ProfilesTests(ApiFactory factory) : IClassFixture<ApiFactory>
     private async Task<HttpClient> ManagerClientAsync(string email)
     {
         var orgId = await factory.GetDemoOrganizationIdAsync();
-        await factory.CreateUserAsync(email, "Passw0rd!", orgId, OrganizationRole.Member);
+        await factory.CreateUserAsync(email, "Passw0rd!", orgId);
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
@@ -187,7 +186,7 @@ public class ProfilesTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Requires_profiles_manage()
     {
         var orgId = await factory.GetDemoOrganizationIdAsync();
-        await factory.CreateUserAsync("prof.noperm@demo.local", "Passw0rd!", orgId, OrganizationRole.Member);
+        await factory.CreateUserAsync("prof.noperm@demo.local", "Passw0rd!", orgId);
         var client = await factory.CreateLoggedInClientAsync("prof.noperm@demo.local", "Passw0rd!");
 
         var resp = await client.GetAsync("/profiles");

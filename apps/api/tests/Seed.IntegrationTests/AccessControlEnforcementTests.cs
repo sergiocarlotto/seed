@@ -34,7 +34,7 @@ public class AccessControlEnforcementTests(ApiFactory factory) : IClassFixture<A
         ApiFactory factory, string email)
     {
         var orgId = await factory.GetDemoOrganizationIdAsync();
-        await factory.CreateUserAsync(email, "Passw0rd!", orgId, Seed.Domain.Organizations.OrganizationRole.Member);
+        await factory.CreateUserAsync(email, "Passw0rd!", orgId);
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
         var id = await db.Users.Where(u => u.Email == email).Select(u => u.Id).FirstAsync();

@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Seed.Domain.AccessControl;
-using Seed.Domain.Organizations;
 using Seed.Infrastructure.Persistence;
 
 namespace Seed.Infrastructure.AccessControl;
 
 // Garante, para cada organização, o perfil de sistema "Administrador" com todas
-// as permissões ativas, e marca os usuários orgRole=Admin como owner, ligando-os
-// ao perfil. Idempotente: roda todo boot sem duplicar. Deve rodar APÓS o
+// as permissões ativas, e liga ao perfil os usuários que já são owner
+// (is_owner). O owner é definido fora da aplicação (DataSeeder/banco), não por
+// esta rotina. Idempotente: roda todo boot sem duplicar. Deve rodar APÓS o
 // reconciliador do catálogo (precisa das permissões já projetadas na tabela).
 //
 // Premissa: cobre apenas as organizações e usuários já existentes no momento do
@@ -67,14 +67,13 @@ public static class AccessControlBootstrapper
                     PermissionKey = key,
                 });
 
-            // 3. Admins da org viram owner e são ligados ao perfil "Administrador".
-            var admins = await db.Users
-                .Where(u => u.OrganizationId == orgId && u.OrgRole == OrganizationRole.Admin)
+            // 3. Liga os owners da org ao perfil "Administrador". is_owner é a
+            // fonte de verdade do dono (semeado fora desta rotina).
+            var owners = await db.Users
+                .Where(u => u.OrganizationId == orgId && u.IsOwner)
                 .ToListAsync(ct);
-            foreach (var user in admins)
+            foreach (var user in owners)
             {
-                if (!user.IsOwner) user.IsOwner = true;
-
                 var linked = await db.UserProfiles
                     .AnyAsync(up => up.UserId == user.Id && up.ProfileId == adminProfile.Id, ct);
                 if (!linked)

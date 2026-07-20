@@ -60,7 +60,6 @@ public class AuthController(
         {
             user = new { user!.Id, user.Email, user.FullName },
             organizationId = user.OrganizationId,
-            orgRole = user.OrgRole.ToString(),
             isOwner = user.IsOwner,
             permissions,
             companies

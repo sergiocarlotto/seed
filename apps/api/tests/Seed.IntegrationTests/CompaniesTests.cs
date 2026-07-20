@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using Seed.Application.Companies;
-using Seed.Domain.Organizations;
 
 namespace Seed.IntegrationTests;
 
@@ -37,7 +36,7 @@ public class CompaniesTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Member_cannot_create()
     {
         var orgId = await factory.GetDemoOrganizationIdAsync();
-        await factory.CreateUserAsync("member@demo.local", "Member123!", orgId, OrganizationRole.Member);
+        await factory.CreateUserAsync("member@demo.local", "Member123!", orgId);
 
         var client = await factory.CreateLoggedInClientAsync("member@demo.local", "Member123!");
 

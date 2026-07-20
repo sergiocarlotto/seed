@@ -19,7 +19,7 @@ public class UsersTests(ApiFactory factory) : IClassFixture<ApiFactory>
     private async Task<Guid> CreateMemberAsync(string email)
     {
         var orgId = await factory.GetDemoOrganizationIdAsync();
-        await factory.CreateUserAsync(email, "Passw0rd!", orgId, OrganizationRole.Member);
+        await factory.CreateUserAsync(email, "Passw0rd!", orgId);
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
         return await db.Users.Where(u => u.Email == email).Select(u => u.Id).FirstAsync();

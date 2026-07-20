@@ -29,7 +29,7 @@ public static class DataSeeder
         {
             UserName = "admin@demo.local", Email = "admin@demo.local",
             EmailConfirmed = true, FullName = "Admin Demo",
-            OrganizationId = org.Id, OrgRole = OrganizationRole.Admin
+            OrganizationId = org.Id, IsOwner = true
         };
         await users.CreateAsync(admin, "Admin123!");
 

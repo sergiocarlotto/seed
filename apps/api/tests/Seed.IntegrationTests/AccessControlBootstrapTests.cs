@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Domain.AccessControl;
-using Seed.Domain.Organizations;
 using Seed.Infrastructure.AccessControl;
 using Seed.Infrastructure.Persistence;
 
@@ -58,7 +57,7 @@ public class AccessControlBootstrapTests(ApiFactory factory) : IClassFixture<Api
     {
         var orgId = await factory.GetDemoOrganizationIdAsync();
         var email = $"member-{Guid.NewGuid():N}@demo.local";
-        await factory.CreateUserAsync(email, "Passw0rd!", orgId, OrganizationRole.Member);
+        await factory.CreateUserAsync(email, "Passw0rd!", orgId);
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
