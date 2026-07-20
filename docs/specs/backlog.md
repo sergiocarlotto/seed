@@ -90,3 +90,39 @@ com link para o spec gerado, ou remova-a do backlog.
   `profiles.manage`/`profiles.assign` genuinamente granulares e menos perigosas,
   substituindo a postura B do v1 (que trata essas permissões como privilégio
   administrativo e restringe só perfis `is_system`).
+
+### i18n-troca-idioma — Internacionalização e troca de idioma da UI
+- **Status:** ideia
+- **Capturado em:** 2026-07-19
+- **Relacionados:** ADR-0004 (padrão de idioma — hoje só código/docs), app-shell
+  (spec 2026-07-18), ADR-0002 (Next.js)
+- **Descrição:** Permitir que a UI troque de idioma facilmente (português,
+  inglês, espanhol, etc.), de forma portável. O seletor de idioma vive no
+  **app-shell**; a base técnica é o roteamento i18n nativo do Next.js (App
+  Router) + uma lib de mensagens (ex.: `next-intl`). Escopo além de strings:
+  formatação de **data, número e moeda** por locale. **Encaixe/insight:** é uma
+  *feature futura*, mas o custo real não é traduzir — é **não hardcodar strings**.
+  Se as telas nascerem usando chaves de tradução (`t("users.title")`) em vez de
+  texto literal, adicionar idiomas depois é quase de graça; caso contrário, vira
+  varredura de todas as telas. Estende a ADR-0004 para o idioma da UI em runtime
+  (hoje ela só rege código e documentação). A decisão de disciplina é de agora,
+  mesmo que a entrega seja futura.
+
+### temas-cores-design-tokens — Temas e cores configuráveis (claro/escuro + temas de marca)
+- **Status:** ideia
+- **Capturado em:** 2026-07-19
+- **Relacionados:** ADR-0011 (abordagem de UI/design system — modo escuro e
+  tokens formais explicitamente adiados), ADR-0002 (Tailwind + shadcn/ui)
+- **Descrição:** Definir as cores principais do sistema (claro/escuro) e permitir
+  **temas nomeados** (ex.: um tema "azul escuro") aplicáveis a todas as telas de
+  uma vez, com padrão bem definido de botões, barras, menus e cores de texto.
+  **Encaixe/insight:** é literalmente o **design system formal adiado pela
+  ADR-0011** (que já lista "tokens compartilhados formais" e "modo escuro
+  toggle" como itens futuros de ADR própria). O shadcn/ui já usa **CSS variables
+  como tokens semânticos** (`--primary`, `--background`, `--foreground`,
+  `--border`, `--muted`…), então claro/escuro é quase nativo e um tema novo vira
+  um **conjunto alternativo de valores** desses tokens. Condição para "trocar
+  tudo de uma vez": as telas usarem **tokens semânticos** (`bg-primary`,
+  `text-foreground`) e nunca cores literais (`bg-blue-600`) — disciplina que
+  precisa valer desde já. Quando amadurecer, deve virar a **ADR do design system**
+  prevista na ADR-0011.
