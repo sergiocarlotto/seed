@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Application.Companies;
+using Seed.Domain.Access;
 using Seed.Domain.AccessControl;
 using Seed.Domain.Organizations;
 using Seed.Infrastructure.Persistence;
@@ -93,4 +94,42 @@ public class CompaniesEnforcementTests(ApiFactory factory) : IClassFixture<ApiFa
         // Sessão ainda válida, mas permissão efetiva agora é vazia → 403.
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/companies")).StatusCode);
     }
+
+    [Fact]
+    public async Task Auth_me_gates_companies_by_permission_and_status()
+    {
+        // Membro com companies.access e acesso à empresa Demo: /auth/me lista a empresa.
+        var userId = await CreateMemberAsync("comp.me@demo.local");
+        await GiveProfileAsync(userId, "Acesso Empresas Me", CompaniesPermissions.Access);
+
+        var orgId = await factory.GetDemoOrganizationIdAsync();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+            var companyId = await db.Companies
+                .Where(c => c.OrganizationId == orgId && c.Name == ApiFactory.DemoCompanyName)
+                .Select(c => c.Id).FirstAsync();
+            var now = DateTime.UtcNow;
+            db.UserCompanyAccesses.Add(new UserCompanyAccess
+            {
+                UserId = userId, CompanyId = companyId, OrganizationId = orgId,
+                CreatedAt = now, UpdatedAt = now,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var client = await factory.CreateLoggedInClientAsync("comp.me@demo.local", "Passw0rd!");
+        var me1 = await client.GetFromJsonAsync<MeCompanies>("/auth/me");
+        Assert.Contains(me1!.Companies, c => c.Name == ApiFactory.DemoCompanyName);
+
+        // Desativado: /auth/me deixa de listar empresas (permissão efetiva vazia → gate).
+        var owner = await factory.CreateAdminClientAsync();
+        await owner.PatchAsJsonAsync($"/users/{userId}/status", new { active = false });
+        var me2 = await client.GetFromJsonAsync<MeCompanies>("/auth/me");
+        Assert.Empty(me2!.Companies);
+    }
+
+    // Espelho enxuto do payload de /auth/me para desserializar só as empresas.
+    private record MeCompanies(List<CompanyRef> Companies);
+    private record CompanyRef(Guid Id, string Name);
 }
