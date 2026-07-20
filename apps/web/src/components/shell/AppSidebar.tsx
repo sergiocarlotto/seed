@@ -17,7 +17,7 @@ import { useSession } from "@/lib/session";
 import { useLogout } from "@/lib/use-logout";
 
 /**
- * Menu lateral gerado a partir de `navModules`, filtrado pelo papel do usuário.
+ * Menu lateral gerado a partir de `navModules`, filtrado pelas permissões do usuário.
  * `collapsed` mostra só ícones (rótulos em tooltip). Em mobile é renderizado
  * dentro da gaveta; `onNavigate` fecha a gaveta ao escolher um item.
  */
