@@ -151,8 +151,27 @@ com link para o spec gerado, ou remova-a do backlog.
   (3) **Calendário traz regras próprias**: disponibilidade do profissional,
   **conflito de horários** e visão de agenda — o que justifica um módulo
   dedicado, não só um campo extra na Tarefa.
-  **Atenção:** peso claro de **arquitetura**. As decisões "Tarefa única com
-  agendamento opcional vs. entidades separadas com base comum" e "Profissional =
-  User vs. recurso à parte" tocam a entidade central Tarefa e o modelo
-  multiempresa (ADR-0010); ao amadurecer, pedem o `software-architect` e
-  provavelmente uma **nova ADR**.
+  **Catálogo de serviços e combos:** cadastrar **serviços** pré-definidos com
+  **duração e preço padrão** (ex.: 30 min, R$ 50) para **agendar rápido** — o
+  serviço do catálogo funciona como **template** (padrão "modelo → instância",
+  igual aos Templates de Projeto da fundação): ao agendar, gera uma execução
+  concreta já preenchida. Além disso, **combos** = pacotes comerciais que agrupam
+  serviços com **desconto** (ex.: X + Y valem R$ 50 cada avulso = R$ 100; no combo,
+  R$ 80). **Insight-chave (regra de modelagem):** o combo é só a camada
+  **comercial/precificação** — a **execução permanece granular por serviço**.
+  Isso separa **três níveis** que não devem se misturar:
+  **(a) Serviço (catálogo/tipo)** = template com duração + preço padrão;
+  **(b) Combo (pacote)** = agrupa serviços e aplica desconto no total;
+  **(c) Execução (agendamento)** = a instância rastreável (tarefa + horário +
+  profissional + status). O **desconto vive no combo, nunca na execução**, para
+  medir cada serviço isoladamente (quantos X, quanto tempo) independentemente de
+  estar num combo. Isto traz **precificação** para o escopo — que o marco-zero
+  deixa fora do MVP ("gestão financeira do projeto" fora de escopo) —, então a
+  ADR do módulo deve tratar a fronteira "preço de serviço" vs. "financeiro do
+  projeto".
+  **Atenção:** peso claro de **arquitetura** (e agora **precificação/financeiro**).
+  As decisões "Tarefa única com agendamento opcional vs. entidades separadas com
+  base comum", "Profissional = User vs. recurso à parte" e "catálogo/combo/execução
+  como três entidades" tocam a entidade central Tarefa e o modelo multiempresa
+  (ADR-0010); ao amadurecer, pedem o `software-architect` e provavelmente uma
+  **nova ADR**.
