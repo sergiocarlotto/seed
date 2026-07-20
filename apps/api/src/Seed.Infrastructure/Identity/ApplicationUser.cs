@@ -13,4 +13,9 @@ public class ApplicationUser : IdentityUser<Guid>
     // AccessControlBootstrapper (Seed.Infrastructure.AccessControl); nenhum
     // endpoint de API o altera. Tem bypass funcional total.
     public bool IsOwner { get; set; }
+
+    // Situação do usuário. Inactive é setado via PATCH /users/{id}/status
+    // (users.manage). Refletido na resolução da permissão efetiva
+    // (EffectivePermissionsService) e no login → bloqueio imediato.
+    public UserStatus Status { get; set; } = UserStatus.Active;
 }
