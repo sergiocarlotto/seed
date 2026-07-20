@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import type { Company } from "@/lib/types";
+import { can } from "@/lib/access";
 import { useSession } from "@/lib/session";
 import { useSetPageHeader } from "@/lib/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -46,8 +47,9 @@ function StatusBadge({ status }: { status: string }) {
 export default function CompaniesPage() {
   useSetPageHeader({ title: "Empresas", breadcrumb: ["Administração", "Empresas"] });
   const router = useRouter();
-  const { companies: sessionCompanies, orgRole } = useSession();
-  const isAdmin = orgRole === "Admin";
+  const me = useSession();
+  const { companies: sessionCompanies } = me;
+  const isAdmin = can(me, "companies.manage");
   const [companies, setCompanies] = useState<Company[]>(sessionCompanies);
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState<Company | null>(null);
