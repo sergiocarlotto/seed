@@ -15,6 +15,7 @@ export type Company = {
 export type Me = {
   user: User;
   organizationId: string;
-  orgRole: string;
+  isOwner: boolean;
+  permissions: string[];
   companies: Company[];
 };
