@@ -19,3 +19,24 @@ export type Me = {
   permissions: string[];
   companies: Company[];
 };
+
+export type PermissionItem = { key: string; displayName: string; description: string };
+export type PermissionGroup = { module: string; permissions: PermissionItem[] };
+
+export type ProfileSummary = {
+  id: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
+  status: string;
+  userCount: number;
+};
+
+export type ProfileDetail = {
+  id: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
+  status: string;
+  permissionKeys: string[];
+};
