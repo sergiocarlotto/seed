@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useSetPageHeader } from "@/lib/page-header";
-import { EmptyState, ErrorState } from "@/components/states";
+import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -66,8 +66,6 @@ export function ProfilesList({ initial }: { initial: ProfileSummary[] }) {
         </div>
       )}
 
-      {error && <ErrorState message={error} onRetry={handleArchive} />}
-
       {profiles.length === 0 ? (
         <EmptyState
           title="Nenhum perfil ainda"
@@ -124,7 +122,15 @@ export function ProfilesList({ initial }: { initial: ProfileSummary[] }) {
         </div>
       )}
 
-      <Dialog open={target !== null} onOpenChange={(o) => !o && setTarget(null)}>
+      <Dialog
+        open={target !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setTarget(null);
+            setError(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Arquivar perfil</DialogTitle>
@@ -139,6 +145,11 @@ export function ProfilesList({ initial }: { initial: ProfileSummary[] }) {
               . O vínculo é mantido e a ação é reversível ao reativar.
             </DialogDescription>
           </DialogHeader>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <DialogFooter>
             <DialogClose render={<Button variant="outline" disabled={archiving} />}>Cancelar</DialogClose>
             <Button variant="destructive" onClick={handleArchive} disabled={archiving}>
