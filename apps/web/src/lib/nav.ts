@@ -1,4 +1,4 @@
-import { Building2, Settings2, type LucideIcon } from "lucide-react";
+import { Building2, Settings2, ShieldCheck, type LucideIcon } from "lucide-react";
 
 export type NavItem = {
   label: string;
@@ -13,14 +13,15 @@ export type NavModule = {
   items: NavItem[];
 };
 
-// Config real de hoje: só o que existe. Perfis e Usuários entram nas Fatias 1 e 2,
-// junto das rotas correspondentes.
+// Config real de hoje: só o que existe. Usuários entra na Fatia 2, junto da
+// rota correspondente.
 export const navModules: NavModule[] = [
   {
     label: "Administração",
     icon: Settings2,
     items: [
       { label: "Empresas", href: "/companies", icon: Building2, permission: "companies.access" },
+      { label: "Perfis", href: "/profiles", icon: ShieldCheck, permission: "profiles.manage" },
     ],
   },
 ];
