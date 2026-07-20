@@ -50,13 +50,14 @@ export function PermissionTree({ groups, selected, onChange, disabled = false }:
                 onClick={() => setOpen((o) => ({ ...o, [group.module]: !isOpen }))}
                 aria-label={isOpen ? "Recolher" : "Expandir"}
                 aria-expanded={isOpen}
+                aria-controls={`permission-group-${group.module}`}
                 className="ml-auto rounded p-1 text-muted-foreground hover:bg-muted"
               >
                 <ChevronDown className={cn("size-4 transition-transform", !isOpen && "-rotate-90")} />
               </button>
             </div>
             {isOpen && (
-              <ul className="flex flex-col">
+              <ul id={`permission-group-${group.module}`} className="flex flex-col">
                 {group.permissions.map((perm) => (
                   <li key={perm.key} className="flex items-center gap-2 px-3 py-2 pl-8">
                     <Checkbox
@@ -66,7 +67,10 @@ export function PermissionTree({ groups, selected, onChange, disabled = false }:
                       aria-label={perm.displayName}
                     />
                     <span className="text-sm">{perm.displayName}</span>
-                    <span className="text-xs text-muted-foreground">· {perm.key}</span>
+                    <span className="text-xs text-muted-foreground">
+                      <span aria-hidden="true">· </span>
+                      {perm.key}
+                    </span>
                   </li>
                 ))}
               </ul>
