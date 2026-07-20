@@ -231,6 +231,23 @@ public class UsersTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Non_owner_cannot_remove_system_profile()
+    {
+        // Owner atribui o perfil de sistema ao alvo; depois um não-owner com
+        // profiles.assign tenta remover (PUT com conjunto vazio) → 403 (postura B).
+        var targetId = await CreateMemberAsync("users.remove.target@demo.local");
+        var systemId = await SystemProfileIdAsync();
+
+        var owner = await factory.CreateAdminClientAsync();
+        var assigned = await owner.PutAsJsonAsync($"/users/{targetId}/profiles", new { profileIds = new[] { systemId } });
+        Assert.Equal(HttpStatusCode.OK, assigned.StatusCode);
+
+        var manager = await ClientWithAsync("users.remove.mgr@demo.local", AccessControlPermissions.ProfilesAssign);
+        var denied = await manager.PutAsJsonAsync($"/users/{targetId}/profiles", new { profileIds = Array.Empty<Guid>() });
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+    }
+
+    [Fact]
     public async Task Cannot_edit_owner_profiles()
     {
         var owner = await factory.CreateAdminClientAsync();
