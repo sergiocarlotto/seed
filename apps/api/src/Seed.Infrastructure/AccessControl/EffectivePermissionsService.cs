@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Seed.Application.Abstractions;
 using Seed.Application.AccessControl;
 using Seed.Domain.AccessControl;
+using Seed.Domain.Organizations;
 using Seed.Infrastructure.Persistence;
 
 namespace Seed.Infrastructure.AccessControl;
@@ -21,14 +22,18 @@ public class EffectivePermissionsService(SeedDbContext db, ICurrentUser currentU
         var userId = currentUser.UserId;
         if (userId is null) return _cache = new HashSet<string>();
 
-        var isOwner = await db.Users
+        var info = await db.Users
             .Where(u => u.Id == userId.Value)
-            .Select(u => (bool?)u.IsOwner)
+            .Select(u => new { u.IsOwner, u.Status })
             .FirstOrDefaultAsync(ct);
-        if (isOwner is null) return _cache = new HashSet<string>();
+        if (info is null) return _cache = new HashSet<string>();
+
+        // Usuário desativado: acesso bloqueado imediatamente, independente de
+        // perfil ou owner (o cache morre com o request → revogação imediata).
+        if (info.Status == UserStatus.Inactive) return _cache = new HashSet<string>();
 
         // Owner: bypass funcional total (todas as permissões ativas do catálogo).
-        if (isOwner.Value)
+        if (info.IsOwner)
         {
             var all = await db.Permissions
                 .Where(p => p.Status == PermissionStatus.Active)
