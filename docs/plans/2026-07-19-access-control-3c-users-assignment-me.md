@@ -906,3 +906,14 @@ git commit -m "test(access-control): usuarios, atribuicao, desativacao, postura 
 **Pontos de atenção para o revisor de segurança:** (a) gate de `Inactive` vem antes do bypass de owner na resolução; (b) postura B cobre adição **e** remoção de is_system por não-owner; (c) login de inativo desfaz o cookie e responde 401 genérico (não revela conta desativada); (d) profile_id de outra org → 404 (não 403), sem vazar existência.
 
 **Ambiente:** testes e migrations via **ferramenta PowerShell** (container), não Bash (`pwsh` ausente no Git Bash) nem `dotnet test`/`dotnet ef` no host (SAC).
+
+**Risco residual conhecido (fechar no Plano 3d) — decisão do usuário: aceitar.**
+O bloqueio imediato de usuário desativado (permissão efetiva vazia) só cobre
+rotas protegidas por `[RequirePermission]`. O `CompaniesController` ainda é só
+`[Authorize]` (o gate migra para `companies.access`/`companies.manage` no 3d).
+Logo, na janela entre 3c e 3d, um usuário já logado e desativado ainda acessa
+`/companies` (um admin não-owner desativado ainda cria/edita, pois o gate atual é
+`orgRole=Admin`, que não olha `Status`). Aceito por respeitar o faseamento; o 3d
+fecha automaticamente ao trocar o gate. Alternativa avaliada e descartada agora:
+um middleware global que rejeita todo request de usuário `Inactive` (defense-in-
+depth) — fica registrado como possível reforço.
