@@ -43,6 +43,7 @@ public static class DependencyInjection
         s.AddScoped<IPermissionQuery, AccessControl.PermissionQuery>();
         s.AddScoped<Seed.Application.Audit.IAuditLog, Audit.AuditLog>();
         s.AddScoped<IProfileService, AccessControl.ProfileService>();
+        s.AddScoped<IUserService, AccessControl.UserService>();
         return s;
     }
 }
