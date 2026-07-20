@@ -34,10 +34,10 @@ public class CompanyService(
 
     public async Task<CompanyDto> CreateAsync(CreateCompanyRequest req, CancellationToken ct)
     {
+        // Ainda precisamos da organização do usuário para criar a empresa sob o
+        // tenant correto. A autorização (companies.manage) já foi feita no gate.
         var ctx = await repo.GetUserContextAsync(UserId, ct)
             ?? throw new ForbiddenException("Usuário sem organização.");
-        if (ctx.OrgRole != OrganizationRole.Admin)
-            throw new ForbiddenException("Apenas administradores criam empresas.");
 
         var now = clock.UtcNow;
         var company = new Company { OrganizationId = ctx.OrganizationId, Name = req.Name.Trim(), CreatedAt = now, UpdatedAt = now };
@@ -49,9 +49,8 @@ public class CompanyService(
 
     public async Task<CompanyDto?> UpdateAsync(Guid id, UpdateCompanyRequest req, CancellationToken ct)
     {
-        var ctx = await repo.GetUserContextAsync(UserId, ct);
-        if (ctx is null || ctx.OrgRole != OrganizationRole.Admin)
-            throw new ForbiddenException("Apenas administradores editam empresas.");
+        // Autorização funcional no gate (companies.manage); aqui só o eixo de
+        // empresa: sem acesso à empresa alvo → null → 404 (não vaza existência).
         var c = await repo.GetForUserAsync(id, UserId, ct);
         if (c is null) return null;
         c.Name = req.Name.Trim();
@@ -62,9 +61,6 @@ public class CompanyService(
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
     {
-        var ctx = await repo.GetUserContextAsync(UserId, ct);
-        if (ctx is null || ctx.OrgRole != OrganizationRole.Admin)
-            throw new ForbiddenException("Apenas administradores excluem empresas.");
         var c = await repo.GetForUserAsync(id, UserId, ct);
         if (c is null) return false;
         c.DeletedAt = clock.UtcNow;
