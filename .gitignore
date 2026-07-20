@@ -45,3 +45,6 @@ Thumbs.db
 
 # Git worktrees locais
 /.worktrees/
+
+# Artefatos do companion visual de brainstorming (superpowers)
+.superpowers/
