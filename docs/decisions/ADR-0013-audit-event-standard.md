@@ -107,8 +107,35 @@ guardar, nem para descartar.
 O expurgo automatico fica adiado ate existir **volume real** que o justifique.
 Quando isso ocorrer, a politica (prazo, expurgo ou particionamento por periodo,
 e eventual exportacao antes do descarte) sera decidida em ADR propria, com o
-dado de crescimento em maos. Ate la, `occurred_at` e `organization_id` ja
-permitem recortar por periodo e por tenant sem mudanca de esquema.
+dado de crescimento em maos.
+
+**A possibilidade fica preservada por construcao.** Esta ADR nao decide a
+politica, mas garante que adota-la depois nao exija reescrever o modelo. As
+propriedades que sustentam isso passam a ser **invariantes** da tabela:
+
+- **Append-only:** o evento nunca e atualizado nem apagado pela aplicacao. Nao
+  existe leitura de negocio que dependa dele, entao remover eventos antigos nao
+  altera comportamento do sistema.
+- **Autossuficiente (sem FK):** `AuditEvents` nao tem chave estrangeira para
+  `Organizations` nem para `AspNetUsers` — guarda os ids como valor. Nenhuma
+  outra tabela aponta para ela. Expurgar ou mover um periodo inteiro nao viola
+  integridade referencial, e o evento continua legivel mesmo depois de a
+  entidade citada ser removida (por isso a regra de gravar o rotulo humano junto
+  do id, na secao 3).
+- **Recortavel por tempo e por tenant:** `occurred_at` (UTC) e `organization_id`
+  ja permitem selecionar exatamente o conjunto a expurgar, arquivar ou exportar,
+  **sem mudanca de esquema**.
+- **Particionavel:** por ser append-only, sem FK e com `occurred_at` em toda
+  linha, a conversao para particionamento nativo por tempo (range mensal) e
+  transparente para a aplicacao — nenhum codigo de escrita muda.
+
+Manter essas invariantes e o que mantem a decisao barata. Introduzir uma FK
+para `AuditEvents`, ou passar a ler eventos como fonte de verdade de alguma
+regra, quebraria a premissa e exigiria rever esta ADR.
+
+Os indices de leitura (`(organization_id, occurred_at)`,
+`(actor_user_id, occurred_at)`) ainda **nao existem**: sao desnecessarios no
+volume atual e entram junto com a decisao de escala, quando houver dado de uso.
 
 ## Consequencias
 
@@ -124,6 +151,10 @@ permitem recortar por periodo e por tenant sem mudanca de esquema.
   possiveis sem interpretar formatos por modulo.
 - `metadata` continua sendo JSON serializado em texto; se a consulta por conteudo
   do JSON virar requisito, migrar a coluna para `jsonb` sera uma decisao propria.
+- `AuditEvents` fica **sem FK e append-only por decisao**, nao por acaso: e o que
+  mantem expurgo e particionamento futuros baratos. Um PR que adicione FK a essa
+  tabela — ou que faca alguma regra de negocio depender da leitura de eventos —
+  esta contrariando esta ADR.
 
 ## Alternativas Consideradas
 
@@ -156,4 +187,6 @@ Esta decisao permanece valida se:
   segredo;
 - o evento e persistido atomicamente com a mutacao que o originou;
 - nenhum modulo novo introduz formato proprio de `metadata`;
+- `AuditEvents` permanece append-only e sem chave estrangeira, mantendo expurgo e
+  particionamento viaveis sem reescrever o modelo;
 - a politica de retencao e revisada em ADR propria quando houver volume.

@@ -3,7 +3,7 @@
 Este documento registra o estado das ferramentas na maquina de desenvolvimento,
 como rodar o projeto e onde o trabalho parou, para facilitar a retomada.
 
-Ultima atualizacao: 2026-07-19.
+Ultima atualizacao: 2026-07-21.
 
 ## Status das ferramentas
 
@@ -127,25 +127,43 @@ O *scaffold* (estrutura inicial) do monorepo esta montado e verificado rodando:
 - `apps/api`: backend ASP.NET Core (.NET 10), solution modular `Seed.Api`,
   `Seed.Application`, `Seed.Domain`, `Seed.Infrastructure` mais os projetos de
   teste, com referencias em camadas (ADR-0003). Endpoint `/health` ativo.
-  `dotnet test` passa (inclui teste de integracao que sobe a API).
+  A suite passa via `scripts/test.ps1` (ver a secao de testes acima; nesta
+  maquina o `dotnet test` direto no host e bloqueado pelo SAC).
 - `apps/web`: frontend Next.js 16 + TypeScript + Tailwind (ADR-0002). Build ok,
   0 vulnerabilidades no npm. Saida `standalone` para container.
 - Docker: `Dockerfile` de cada app, `docker-compose.yml` + overrides de dev e
   prod, `Caddyfile` (same-origin) e `.env.example` (ADR-0007). Stack sobe com
   todos os servicos `healthy` e o roteamento same-origin foi validado.
 
-## Modulo `organizations` — multiempresa (branch `feat/organizations-login-empresa`)
+## Modulos implementados
 
-O primeiro modulo de negocio esta implementado no modelo multiempresa e
-verificado (2026-07-18): `Organization` (tenant) -> `Company` (varias por org) ->
-acesso explicito por usuario (`UserCompanyAccess`); login por email+senha (cookie
-httpOnly), CRUD de empresa restrito ao acesso, papeis `Admin`/`Member`, seed de
-dev (org Demo + admin + empresa), e testes de integracao (10/10 verdes com
-Postgres real). Frontend com shadcn/ui: login e CRUD de empresa. Sem auto-cadastro
-(organizacoes sao provisionadas por nos; super-admin no futuro).
+Ambos estao na `main` (mergeados) e verificados.
 
-Design/plano/decisoes: `docs/specs/2026-07-18-organizations-multiempresa-design.md`,
-`docs/plans/2026-07-18-organizations-multiempresa-rework.md`, ADR-0010 e ADR-0011.
+### `organizations` — multiempresa (2026-07-18)
+
+`Organization` (tenant) -> `Company` (varias por org) -> acesso explicito por
+usuario (`UserCompanyAccess`); login por email+senha (cookie httpOnly), CRUD de
+empresa restrito ao acesso e seed de dev (org Demo + admin + empresa). Frontend
+com shadcn/ui: login e CRUD de empresa. Sem auto-cadastro (organizacoes sao
+provisionadas por nos; super-admin no futuro).
+
+Nota: os papeis fixos `Admin`/`Member` deste modulo **foram removidos** pela
+ADR-0012 — ver abaixo.
+
+Doc do modulo: `docs/modules/organizations.md`. Design/plano: ADR-0010, ADR-0011.
+
+### `access-control` — perfis e permissoes (2026-07-21)
+
+Perfis configuraveis por organizacao no lugar dos papeis fixos (ADR-0012):
+catalogo de permissoes declarado no codigo e reconciliado no boot, perfis por
+org, atribuicao a usuarios, permissao efetiva por request e enforcement por
+`[RequirePermission]`. O dono da organizacao (`is_owner`) tem bypass funcional e
+e somente-leitura na aplicacao. Frontend: telas de Perfis e Usuarios.
+
+Verificado: 48 testes backend (Postgres real), 27 unit no frontend, 12 e2e.
+
+Doc do modulo: `docs/modules/access-control.md`. Decisoes: ADR-0012 (perfis),
+ADR-0013 (padrao do `AuditEvent`).
 
 ### Como experimentar
 
@@ -154,13 +172,41 @@ docker compose up -d --build
 # abra http://localhost/login e entre com o usuario semeado (Development):
 #   email:  admin@demo.local
 #   senha:  Admin123!
-# gerencie as empresas em http://localhost/companies (Admin cria/edita/exclui)
+# empresas em /companies; perfis em /profiles; usuarios em /users
 docker compose down
 ```
 
+O usuario semeado e o **owner** da organizacao Demo: ve tudo, e nao pode ser
+desativado nem ter perfis alterados pela aplicacao (por design — e o piso que
+evita trancar a organizacao por fora).
+
+**Atencao ao banco de dev:** o volume `pgdata` sobrevive entre branches, e o
+Postgres so aplica `POSTGRES_PASSWORD` na **criacao** do volume. Se voce trocar a
+senha no `.env`, a API sobe e morre com `28P01: password authentication failed`.
+Corrija por dentro, sem apagar o volume (e sem perder os dados de dev):
+
+```powershell
+docker compose exec -T db psql -U seed -d seed -c "ALTER USER seed WITH PASSWORD 'a-senha-do-seu-env';"
+docker compose up -d api
+```
+
+## Rodar os testes do frontend
+
+Rodam no host (o SAC nao bloqueia):
+
+```powershell
+npm --prefix apps/web run test    # vitest
+npm --prefix apps/web run lint
+npm --prefix apps/web run build
+npm --prefix apps/web run e2e     # Playwright; exige a API de pe (docker compose up -d db api)
+```
+
+O Playwright sobe o `next dev` sozinho, mas **nao** sobe a API: deixe `db` e `api`
+rodando antes. Nao suba o servico `web` do compose junto, para nao disputar a
+porta 3000.
+
 ## Proximo passo
 
-- Revisar e mesclar a branch `feat/organizations-login-empresa` na `main`.
 - Sub-decisao pendente: estrategia de email transacional (para convite e
   recuperacao de senha da ADR-0006).
 - Proximo modulo: `clients` (cadastro dos clientes atendidos), seguindo o mesmo
