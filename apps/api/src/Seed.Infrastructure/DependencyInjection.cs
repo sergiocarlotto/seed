@@ -44,6 +44,7 @@ public static class DependencyInjection
         s.AddScoped<Seed.Application.Audit.IAuditLog, Audit.AuditLog>();
         s.AddScoped<IProfileService, AccessControl.ProfileService>();
         s.AddScoped<IUserService, AccessControl.UserService>();
+        s.AddScoped<ICompanyAccessService, Companies.CompanyAccessService>();
         return s;
     }
 }

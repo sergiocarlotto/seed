@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Seed.Api.Authorization;
 using Seed.Application.AccessControl;
+using Seed.Application.Companies;
 
 namespace Seed.Api.Controllers;
 
@@ -9,7 +10,7 @@ namespace Seed.Api.Controllers;
 // [RequirePermission] fica no método, não na classe.
 [ApiController]
 [Route("users")]
-public class UsersController(IUserService service) : ControllerBase
+public class UsersController(IUserService service, ICompanyAccessService companyAccess) : ControllerBase
 {
     [HttpGet]
     [RequirePermission(AccessControlPermissions.UsersManage)]
@@ -63,5 +64,21 @@ public class UsersController(IUserService service) : ControllerBase
         catch (UserForbiddenException) { return Forbid(); }
         catch (UserNotFoundException) { return NotFound(); }
         catch (UserConflictException ex) { return Conflict(new { error = ex.Message }); }
+    }
+
+    // Eixo de empresa: gate próprio (companies.grant_access), distinto de
+    // users.manage. O conjunto vale DENTRO do escopo concedível (ADR-0014).
+    [HttpPut("{id:guid}/companies")]
+    [RequirePermission(CompaniesPermissions.GrantAccess)]
+    public async Task<IActionResult> SetCompanies(Guid id, SetUserCompaniesRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await companyAccess.SetUserCompaniesAsync(id, req, ct);
+            var u = await service.GetAsync(id, ct);
+            return u is null ? NotFound() : Ok(u);
+        }
+        catch (CompanyAccessNotFoundException) { return NotFound(); }
+        catch (CompanyAccessConflictException ex) { return Conflict(new { error = ex.Message }); }
     }
 }
