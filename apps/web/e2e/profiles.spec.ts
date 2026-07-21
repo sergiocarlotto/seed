@@ -17,7 +17,8 @@ test.describe("perfis", () => {
     await page.goto("/profiles");
     await expect(page.getByTestId("page-title")).toHaveText("Perfis");
     await expect(page.getByText("Administrador")).toBeVisible();
-    await expect(page.getByText("Sistema")).toBeVisible();
+    // `exact` evita casar com a descrição do perfil ("Perfil de sistema com...").
+    await expect(page.getByText("Sistema", { exact: true })).toBeVisible();
   });
 
   test("cria um perfil com uma permissão", async ({ page }) => {

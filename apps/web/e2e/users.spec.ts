@@ -23,7 +23,8 @@ test.describe("usuários", () => {
   test("abre o detalhe e vê o switch de status desabilitado para o owner", async ({ page }) => {
     await login(page);
     await page.goto("/users");
-    await page.getByText(EMAIL).click();
+    // O caminho para o detalhe é a ação "Ver" da linha (o e-mail não é link).
+    await page.getByRole("row").filter({ hasText: EMAIL }).getByRole("link", { name: "Ver" }).click();
     await page.waitForURL("**/users/**");
     // O owner é somente leitura: switch de status desabilitado.
     await expect(page.getByTestId("user-status")).toBeDisabled();
