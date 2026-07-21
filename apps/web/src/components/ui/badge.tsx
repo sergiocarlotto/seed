@@ -10,6 +10,9 @@ const badgeVariants = cva(
       variant: {
         neutral: "bg-muted text-muted-foreground ring-border",
         system: "bg-primary/10 text-primary ring-primary/20",
+        success:
+          "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950 dark:text-emerald-400",
+        info: "bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-950 dark:text-blue-400",
       },
     },
     defaultVariants: { variant: "neutral" },

@@ -40,3 +40,15 @@ export type ProfileDetail = {
   status: string;
   permissionKeys: string[];
 };
+
+export type EntityRef = { id: string; name: string };
+
+export type UserRow = {
+  id: string;
+  fullName: string;
+  email: string;
+  status: string;
+  isOwner: boolean;
+  profiles: EntityRef[];
+  companies: EntityRef[];
+};
