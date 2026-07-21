@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Application.Abstractions;
+using Seed.Application.AccessControl;
 using Seed.Application.Companies;
 using Seed.Infrastructure.Email;
 using Seed.Infrastructure.Identity;
@@ -29,6 +30,20 @@ public static class DependencyInjection
         s.AddScoped<ICompanyRepository, CompanyRepository>();
         s.AddScoped<IClock, SystemClock>();
         s.AddScoped<IEmailSender, NoOpEmailSender>();
+        s.AddHostedService<AccessControl.PermissionCatalogReconcilerHostedService>();
+        // Deve vir DEPOIS do reconciliador (ordem de registro = ordem de start):
+        // o bootstrap concede "todas as permissões ativas" e precisa da tabela
+        // Permission já populada. Se o reconciliador virar um BackgroundService
+        // (que não bloqueia StartAsync) ou esta linha for movida para antes dele,
+        // o "Administrador" seria semeado sem permissões. O teste
+        // Demo_org_has_system_admin_profile_with_all_active_permissions guarda
+        // esse caso: falha (activeKeys vazio) se essa ordem quebrar.
+        s.AddHostedService<AccessControl.AccessControlBootstrapperHostedService>();
+        s.AddScoped<IEffectivePermissions, AccessControl.EffectivePermissionsService>();
+        s.AddScoped<IPermissionQuery, AccessControl.PermissionQuery>();
+        s.AddScoped<Seed.Application.Audit.IAuditLog, Audit.AuditLog>();
+        s.AddScoped<IProfileService, AccessControl.ProfileService>();
+        s.AddScoped<IUserService, AccessControl.UserService>();
         return s;
     }
 }

@@ -38,6 +38,7 @@ public class AuthTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var body = await me.Content.ReadAsStringAsync();
         Assert.Contains(ApiFactory.DemoCompanyName, body); // "Empresa Demo"
         Assert.Contains("organizationId", body);
-        Assert.Contains("Admin", body); // orgRole
+        Assert.Contains("isOwner", body); // dono da org (substitui orgRole)
+        Assert.Contains("permissions", body);
     }
 }

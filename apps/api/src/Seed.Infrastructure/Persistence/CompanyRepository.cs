@@ -23,7 +23,7 @@ public class CompanyRepository(SeedDbContext db) : ICompanyRepository
     public async Task<UserContext?> GetUserContextAsync(Guid userId, CancellationToken ct)
     {
         var u = await db.Users.FirstOrDefaultAsync(x => x.Id == userId, ct);
-        return u is null ? null : new UserContext(u.OrganizationId, u.OrgRole);
+        return u is null ? null : new UserContext(u.OrganizationId);
     }
 
     public async Task AddAsync(Company company, UserCompanyAccess access, CancellationToken ct)

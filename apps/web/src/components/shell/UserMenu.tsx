@@ -16,7 +16,7 @@ import { useSession } from "@/lib/session";
 import { useLogout } from "@/lib/use-logout";
 
 export function UserMenu() {
-  const { user, orgRole } = useSession();
+  const { user, isOwner } = useSession();
   const handleLogout = useLogout();
 
   const initials = user.fullName
@@ -48,7 +48,9 @@ export function UserMenu() {
               <span className="truncate text-xs font-normal text-muted-foreground">
                 {user.email}
               </span>
-              <span className="text-xs font-normal text-muted-foreground">{orgRole}</span>
+              {isOwner && (
+                <span className="text-xs font-normal text-muted-foreground">Dono</span>
+              )}
             </div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>

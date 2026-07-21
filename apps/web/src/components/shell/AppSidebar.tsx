@@ -11,12 +11,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { navModules, visibleNav, type OrgRole } from "@/lib/nav";
+import { navModules, visibleNav } from "@/lib/nav";
+import { can } from "@/lib/access";
 import { useSession } from "@/lib/session";
 import { useLogout } from "@/lib/use-logout";
 
 /**
- * Menu lateral gerado a partir de `navModules`, filtrado pelo papel do usuário.
+ * Menu lateral gerado a partir de `navModules`, filtrado pelas permissões do usuário.
  * `collapsed` mostra só ícones (rótulos em tooltip). Em mobile é renderizado
  * dentro da gaveta; `onNavigate` fecha a gaveta ao escolher um item.
  */
@@ -28,8 +29,8 @@ export function AppSidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const { orgRole } = useSession();
-  const modules = visibleNav(navModules, orgRole as OrgRole);
+  const me = useSession();
+  const modules = visibleNav(navModules, (key) => can(me, key));
   const handleLogout = useLogout();
 
   return (

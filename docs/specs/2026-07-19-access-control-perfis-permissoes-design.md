@@ -325,9 +325,18 @@ Em **duas fases** para não quebrar o seed existente (org Demo + admin + member)
    - migration cria `Permission`, `Profile`, `ProfilePermission`, `UserProfile`;
      adiciona `is_owner` a `ApplicationUser`;
    - reconciliador popula `Permission` a partir do catálogo do código;
-   - data migration: cada org ganha o perfil "Administrador" (`is_system`, todas
-     as permissões); usuários `orgRole=Admin` → `is_owner=true` + vínculo ao
-     "Administrador"; usuários `orgRole=Member` → **sem perfil**.
+   - data migration: cada org ganha o perfil "Administrador" (`is_system`); **todos**
+     os usuários `orgRole=Admin` → vínculo ao "Administrador", e **apenas um deles
+     por organização** → `is_owner=true` (desempate pelo menor `Id`); usuários
+     `orgRole=Member` → **sem perfil**. O perfil nasce sem permissões: o
+     reconciliador popula `Permission` e o bootstrapper faz o *top-up* no boot,
+     pois a migration roda antes do catálogo existir.
+
+   **Por que só um owner:** `is_owner` dá bypass total e é **irrevogável pela
+   aplicação** (owner não pode ser desativado nem ter perfis alterados). Promover
+   todos os admins deixaria N contas com privilégio permanente que a app nunca
+   conseguiria rebaixar — offboarding só por SQL no banco. O vínculo de perfil dá
+   a mesma capacidade operacional e continua revogável pela UI.
 2. **Fase 2 — remove `orgRole`:** após os dados migrados e validados, migration
    que dropa a coluna `orgRole`.
 
@@ -361,6 +370,9 @@ Herda a lista da ADR-0006 e acrescenta específicos:
   perfil `is_system` ("Administrador") → negado;
 - **owner protegido:** não é possível desativar o owner nem editar seus perfis
   pela app → bloqueado;
+- **data migration:** org com vários admins → exatamente **um** `is_owner` e
+  **todos** os ex-admins vinculados ao "Administrador"; member sem perfil; org
+  sem admins não ganha owner;
 - **allow-list:** `is_system`/`is_owner`/`organization_id`/`status` enviados no
   corpo são ignorados (não escalam);
 - atribuir `profile_id` de outra org via `PUT /users/{id}/profiles` → 404;
@@ -370,13 +382,14 @@ Herda a lista da ADR-0006 e acrescenta específicos:
 
 ## Trabalho de decisão pendente (fora deste design)
 
-- **Nova ADR** substituindo/estendendo a ADR-0006 (perfis configuráveis no lugar
-  de papéis fixos; racional, tradeoffs, impacto de migração).
-- **ADR de padronização do `AuditEvent`** (afeta todos os módulos): contrato
-  `actor_user_id`/`occurred_at`/`organization_id`/`action`/`target`/`details`
-  para viabilizar relatórios transversais. Este design já adota o contrato como
-  padrão de trabalho.
-- Documentação do módulo `AccessControl` em `docs/modules/` (padrão ADR-0008).
+Todos concluídos em 2026-07-20:
+
+- [x] **Nova ADR** substituindo/estendendo a ADR-0006 → **ADR-0012** (perfis
+      configuráveis no lugar de papéis fixos).
+- [x] **ADR de padronização do `AuditEvent`** → **ADR-0013** (taxonomia
+      `<módulo>.<entidade>.<verbo>`, contrato `old`/`new`, emissão atômica e
+      retenção indefinida no MVP).
+- [x] Documentação do módulo em `docs/modules/access-control.md` (padrão ADR-0008).
 
 **Revisão de segurança:** realizada (`security-engineer`). Achados críticos de
 escalada de privilégio resolvidos no design via **postura B** (perfis
