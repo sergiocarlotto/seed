@@ -166,25 +166,38 @@ quem, mas não recebe o restante do cadastro.
 
 ### Regras
 
-- **Tenancy:** usuário alvo, empresa alvo e todo id do conjunto pedido precisam
-  pertencer à organização do caller. Fora dela → **404** (não vaza existência).
-- **Empresa soft-deleted** (`DeletedAt != null`) não pode ser concedida → 404.
-- **Recorte do concedente:** para caller **não-owner**, cada empresa
-  **adicionada ou removida** precisa estar no `UserCompanyAccess` do próprio
-  caller; senão **403**. A verificação incide sobre o **delta**, não sobre o
-  conjunto inteiro — assim um caller que não acessa a empresa X consegue salvar
-  alterações em um usuário que já tem X, sem ser forçado a removê-la. É a mesma
-  mecânica de delta que a postura B já usa em `UserService.SetProfilesAsync`.
-- **Owner caller é isento do recorte:** concede qualquer empresa da organização.
-  É o piso antilockout já aceito na ADR-0012 e o que destrava uma empresa órfã,
-  cujo único usuário com acesso foi desativado.
+- **Escopo concedível do caller** é o conceito central:
+  - **owner** → todas as empresas ativas da organização;
+  - **não-owner** → as empresas do próprio `UserCompanyAccess`.
+- **Tenancy:** o usuário alvo precisa ser da organização do caller; senão
+  **404**. Toda empresa citada no payload precisa estar no **escopo concedível**;
+  senão **404** — e não 403. Uma empresa da organização à qual o caller não tem
+  acesso já é hoje indistinguível de inexistente (é o que `CompanyService` faz),
+  e responder 403 aqui revelaria sua existência, criando um vazamento que não
+  existe no resto do módulo.
+- **Empresa soft-deleted** está fora do escopo pelo mesmo caminho: o filtro
+  global de `Company` (`DeletedAt == null`) já a exclui.
+- **Semântica do `PUT /users/{id}/companies`:** o payload define o conjunto de
+  empresas do usuário **dentro do escopo concedível do caller**. Concessões fora
+  desse escopo são **preservadas intactas** — não são interpretadas como remoção
+  por estarem ausentes do payload. Sem isso a regra se contradiz: a tela do
+  caller só lista o que ele pode conceder, então enviar "o conjunto completo"
+  removeria silenciosamente tudo o que ele não enxerga (ou daria erro em toda
+  gravação). Para o owner, escopo = organização inteira, então o endpoint se
+  comporta como um PUT de conjunto completo comum.
+- **Semântica do `PUT /companies/{id}/users`:** a empresa da rota precisa estar
+  no escopo concedível (senão 404); dentro dela o payload é o conjunto completo
+  de usuários com acesso, já que todos os usuários da organização são alvo
+  legítimo.
 - **Owner alvo é editável neste eixo** — diferença deliberada em relação a status
   e perfis, onde o owner é somente-leitura. O owner está sujeito ao eixo de
-  empresa (ADR-0012), então precisa poder receber acesso; e como é isento do
-  recorte, sempre consegue se reconceder. Não há lockout a proteger aqui.
-- **Concorrência:** violação da PK composta (`23505`) e remoção concorrente
-  (`DbUpdateConcurrencyException`) são traduzidas para **409**, como já é feito
-  em `SetProfilesAsync`.
+  empresa (ADR-0012), então precisa poder receber acesso; e como o escopo dele é
+  a organização inteira, sempre consegue se reconceder. Não há lockout a proteger
+  aqui. O escopo total do owner é também o que destrava uma **empresa órfã**,
+  cujo único usuário com acesso foi desativado.
+- **Concorrência:** violação do índice único `(UserId, CompanyId)` (`23505`) e
+  remoção concorrente (`DbUpdateConcurrencyException`) são traduzidas para
+  **409**, como já é feito em `SetProfilesAsync`.
 - A auto-concessão de quem cria empresa (`CompanyService.CreateAsync`) permanece
   como está.
 
@@ -255,11 +268,11 @@ Concessão de acesso:
 - concede e revoga, nos dois endpoints, com efeito real na listagem de empresas
   do usuário alvo;
 - `403` sem `companies.grant_access`;
-- não-owner **não** concede empresa à qual não tem acesso (`403`), e **não** a
-  revoga;
-- não-owner consegue salvar um alvo que já possui empresa fora do recorte, desde
-  que não a toque;
-- owner concede qualquer empresa da organização;
+- não-owner **não** concede empresa fora do próprio escopo → `404` (mesma
+  resposta de empresa inexistente, sem revelar que ela existe);
+- não-owner salva um alvo que já possui empresa fora do escopo e essa concessão
+  é **preservada** — ausente do payload, ela não é removida;
+- owner concede qualquer empresa da organização, inclusive uma empresa órfã;
 - usuário ou empresa de outra organização → `404`; empresa soft-deleted → `404`;
 - owner alvo pode ter empresas alteradas;
 - os dois eixos permanecem independentes: ter `UserCompanyAccess` sem
