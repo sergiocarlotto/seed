@@ -116,6 +116,49 @@ namespace Seed.Infrastructure.Persistence.Migrations
                 name: "IX_UserProfiles_ProfileId",
                 table: "UserProfiles",
                 column: "ProfileId");
+
+            // Data migration da ADR-0012: converte o estado da ADR-0010 (OrgRole
+            // Admin=0 / Member=1) para o modelo de perfis. Em banco novo é no-op
+            // (o DataSeeder roda depois e já cria o owner).
+            //
+            // O perfil nasce SEM permissões: quem as concede é o
+            // AccessControlBootstrapper no boot (top-up), pois o catálogo de
+            // Permission só é populado pelo reconciliador, após as migrations.
+            migrationBuilder.Sql(
+                """
+                INSERT INTO "Profiles"
+                    ("Id", "OrganizationId", "Name", "Description", "IsSystem", "Status", "CreatedAt", "UpdatedAt")
+                SELECT gen_random_uuid(), o."Id", 'Administrador',
+                       'Perfil de sistema com todas as permissões.', TRUE, 0, now(), now()
+                FROM "Organizations" o;
+                """);
+
+            // Todos os ex-admins mantêm o acesso administrativo por VÍNCULO de
+            // perfil — que a aplicação consegue revogar depois.
+            migrationBuilder.Sql(
+                """
+                INSERT INTO "UserProfiles" ("UserId", "ProfileId")
+                SELECT u."Id", p."Id"
+                FROM "AspNetUsers" u
+                JOIN "Profiles" p
+                  ON p."OrganizationId" = u."OrganizationId" AND p."IsSystem"
+                WHERE u."OrgRole" = 0;
+                """);
+
+            // Apenas UM admin por organização vira owner (desempate determinístico
+            // pelo menor Id). O owner tem bypass total e é irrevogável pela app,
+            // então esse privilégio não é distribuído a todos os ex-admins.
+            // Membros (OrgRole=1) migram sem perfil — consequência assumida no design.
+            migrationBuilder.Sql(
+                """
+                UPDATE "AspNetUsers" SET "IsOwner" = TRUE
+                WHERE "Id" IN (
+                    SELECT DISTINCT ON ("OrganizationId") "Id"
+                    FROM "AspNetUsers"
+                    WHERE "OrgRole" = 0
+                    ORDER BY "OrganizationId", "Id"
+                );
+                """);
         }
 
         /// <inheritdoc />

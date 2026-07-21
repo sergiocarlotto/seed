@@ -102,10 +102,17 @@ todos os modulos sera objeto de ADR propria.
   `UserProfile`; `ApplicationUser` ganha `is_owner` e **perde** `orgRole`.
 - O reconciliador de catalogo roda no boot do `Seed.Api`, apos migrations.
 - Migracao em duas fases: (1) cria estruturas, popula `Permission` e o perfil
-  "Administrador" por org, marca `Admin` atual como `is_owner` e vincula ao
-  "Administrador"; membros ficam sem perfil; (2) remove a coluna `orgRole`.
-  Consequencia assumida: membros migrados sem perfil perdem acesso funcional
-  (inclusive ver empresas) ate receberem um perfil.
+  "Administrador" por org, vincula **todos** os `orgRole=Admin` a esse perfil e
+  marca **apenas um deles por organizacao** como `is_owner` (desempate
+  determinístico pelo menor `Id`); membros ficam sem perfil; (2) remove a coluna
+  `orgRole`. Consequencia assumida: membros migrados sem perfil perdem acesso
+  funcional (inclusive ver empresas) ate receberem um perfil.
+  Racional de eleger um unico owner: `is_owner` da bypass total e e
+  **irrevogavel pela aplicacao** (o owner nao pode ser desativado nem ter perfis
+  alterados). Promover todos os admins criaria N contas com privilegio
+  permanente que a app nunca conseguiria rebaixar — inviabilizando offboarding
+  sem acesso ao banco. O vinculo de perfil preserva a mesma capacidade
+  operacional e continua revogavel pela UI.
 - O modulo `organizations` passa a declarar `companies.access` e
   `companies.manage` no lugar do gate por `orgRole=Admin`.
 - Autorizacao continua 100% no backend; frontend nunca e barreira.
