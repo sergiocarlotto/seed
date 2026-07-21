@@ -1,4 +1,4 @@
-import { Building2, Settings2, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Building2, Settings2, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 
 export type NavItem = {
   label: string;
@@ -22,6 +22,7 @@ export const navModules: NavModule[] = [
     items: [
       { label: "Empresas", href: "/companies", icon: Building2, permission: "companies.access" },
       { label: "Perfis", href: "/profiles", icon: ShieldCheck, permission: "profiles.manage" },
+      { label: "Usuários", href: "/users", icon: Users, permission: "users.manage" },
     ],
   },
 ];
