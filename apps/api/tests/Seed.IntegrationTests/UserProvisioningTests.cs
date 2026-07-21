@@ -86,6 +86,14 @@ public class UserProvisioningTests(ApiFactory factory) : IClassFixture<ApiFactor
         var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
         var stored = await db.Users.FirstAsync(u => u.Email == "prov.escalate@demo.local");
         Assert.Equal(demoOrgId, stored.OrganizationId); // sempre a org do caller
+
+        // Conferido no banco, não no DTO: como o retorno é montado em memória,
+        // asserir nele só repetiria os literais da implementação.
+        Assert.False(stored.IsOwner);
+        Assert.Equal(UserStatus.Active, stored.Status);
+        // Nasce sem empresa. /auth/me não serve de prova aqui: ele devolve lista
+        // vazia por falta de companies.access, haja ou não linha de acesso.
+        Assert.False(await db.UserCompanyAccesses.AnyAsync(a => a.UserId == stored.Id));
     }
 
     [Fact]
@@ -168,6 +176,26 @@ public class UserProvisioningTests(ApiFactory factory) : IClassFixture<ApiFactor
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
         Assert.False(await db.Users.AnyAsync(u => u.Email == "prov.blank.target@demo.local"));
+    }
+
+    [Fact]
+    public async Task Create_with_too_long_full_name_is_400()
+    {
+        var manager = await factory.CreateClientWithPermissionsAsync(
+            "prov.long@demo.local", AccessControlPermissions.UsersManage);
+
+        // 201 caracteres: um a mais que o teto de 200, o mesmo de Profile.Name.
+        var resp = await manager.PostAsJsonAsync("/users", new
+        {
+            fullName = new string('a', 201), email = "prov.long.target@demo.local",
+            password = "Passw0rd!",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+        Assert.False(await db.Users.AnyAsync(u => u.Email == "prov.long.target@demo.local"));
     }
 
     [Fact]
