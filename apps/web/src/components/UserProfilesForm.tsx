@@ -100,7 +100,9 @@ export function UserProfilesForm({ userId, targetIsOwner, currentProfiles, allPr
           {error} — recarregue a página e tente novamente.
         </p>
       )}
-      {saved && <p className="text-sm text-emerald-600">Perfis atualizados.</p>}
+      {saved && (
+        <p className="text-sm text-emerald-600 dark:text-emerald-400">Perfis atualizados.</p>
+      )}
       <div>
         <Button onClick={handleSave} disabled={saving} data-testid="save-profiles">
           {saving ? "Salvando..." : "Salvar perfis"}
