@@ -23,6 +23,19 @@ public class UsersController(IUserService service) : ControllerBase
         return u is null ? NotFound() : Ok(u);
     }
 
+    [HttpPost]
+    [RequirePermission(AccessControlPermissions.UsersManage)]
+    public async Task<IActionResult> Create(CreateUserRequest req, CancellationToken ct)
+    {
+        try
+        {
+            var u = await service.CreateAsync(req, ct);
+            return CreatedAtAction(nameof(Get), new { id = u.Id }, u);
+        }
+        catch (UserValidationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (UserForbiddenException) { return Forbid(); }
+    }
+
     [HttpPatch("{id:guid}/status")]
     [RequirePermission(AccessControlPermissions.UsersManage)]
     public async Task<IActionResult> SetStatus(Guid id, UpdateUserStatusRequest req, CancellationToken ct)

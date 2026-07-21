@@ -19,3 +19,8 @@ public record UserDto(
 // Requests (allow-list — nada de IsOwner/Status/OrganizationId/IsSystem).
 public record UpdateUserStatusRequest(bool Active);
 public record AssignProfilesRequest(IReadOnlyList<Guid>? ProfileIds);
+
+// Criação de usuário. Allow-list estrita: OrganizationId, IsOwner, Status e
+// EmailConfirmed NÃO existem aqui — são fixados pelo servidor, então não há o
+// que ignorar. Senha definida pelo administrador (sem convite por e-mail).
+public record CreateUserRequest(string FullName, string Email, string Password);

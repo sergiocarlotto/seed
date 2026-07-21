@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Seed.Application.Abstractions;
@@ -5,6 +6,7 @@ using Seed.Application.AccessControl;
 using Seed.Application.Audit;
 using Seed.Domain.AccessControl;
 using Seed.Domain.Organizations;
+using Seed.Infrastructure.Identity;
 using Seed.Infrastructure.Persistence;
 
 namespace Seed.Infrastructure.AccessControl;
@@ -12,7 +14,8 @@ namespace Seed.Infrastructure.AccessControl;
 // Gestão de usuários da organização da sessão. Consistente com ProfileService:
 // DbContext direto, tenancy resolvida pelo usuário atual, auditoria na mesma UoW.
 public class UserService(
-    SeedDbContext db, ICurrentUser currentUser, IAuditLog audit) : IUserService
+    SeedDbContext db, ICurrentUser currentUser, IAuditLog audit,
+    UserManager<ApplicationUser> users) : IUserService
 {
     private const string EntityType = "User";
 
@@ -38,6 +41,53 @@ public class UserService(
         var (orgId, _) = await CallerAsync(ct);
         var list = await BuildAsync(orgId, onlyUserId: id, ct);
         return list.Count == 0 ? null : list[0];
+    }
+
+    public async Task<UserDto> CreateAsync(CreateUserRequest req, CancellationToken ct)
+    {
+        var (orgId, _) = await CallerAsync(ct);
+
+        var fullName = (req.FullName ?? "").Trim();
+        var email = (req.Email ?? "").Trim();
+        if (fullName.Length == 0) throw new UserValidationException("Nome obrigatório.");
+        if (email.Length == 0) throw new UserValidationException("E-mail obrigatório.");
+
+        // Transação explícita porque UserManager.CreateAsync chama SaveChanges por
+        // conta própria. Sem ela, auditar antes deixaria o evento pendurado no
+        // change tracker se a criação falhasse (evento de algo que não aconteceu,
+        // proibido pela ADR-0013), e auditar depois permitiria usuário sem evento.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,     // sem e-mail transacional não há confirmação
+            FullName = fullName,
+            OrganizationId = orgId,    // sempre do chamador, nunca do request
+            IsOwner = false,           // owner é gerido fora da aplicação (ADR-0012)
+            Status = UserStatus.Active,
+        };
+
+        var result = await users.CreateAsync(user, req.Password ?? "");
+        if (!result.Succeeded)
+        {
+            // E-mail é único globalmente. Mensagem neutra para não revelar que a
+            // conta existe em OUTRA organização (ver spec, "Riscos aceitos").
+            var duplicate = result.Errors.Any(e =>
+                e.Code is "DuplicateUserName" or "DuplicateEmail");
+            throw new UserValidationException(duplicate
+                ? "Não foi possível usar este e-mail."
+                : string.Join(" ", result.Errors.Select(e => e.Description)));
+        }
+
+        audit.Record(orgId, "access_control.user.created", EntityType, user.Id.ToString(),
+            new { full_name = fullName, email });
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        var list = await BuildAsync(orgId, onlyUserId: user.Id, ct);
+        return list[0];
     }
 
     public async Task<UserDto?> SetStatusAsync(Guid id, UpdateUserStatusRequest req, CancellationToken ct)
