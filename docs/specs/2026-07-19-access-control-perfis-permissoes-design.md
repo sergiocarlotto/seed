@@ -382,13 +382,14 @@ Herda a lista da ADR-0006 e acrescenta específicos:
 
 ## Trabalho de decisão pendente (fora deste design)
 
-- **Nova ADR** substituindo/estendendo a ADR-0006 (perfis configuráveis no lugar
-  de papéis fixos; racional, tradeoffs, impacto de migração).
-- **ADR de padronização do `AuditEvent`** (afeta todos os módulos): contrato
-  `actor_user_id`/`occurred_at`/`organization_id`/`action`/`target`/`details`
-  para viabilizar relatórios transversais. Este design já adota o contrato como
-  padrão de trabalho.
-- Documentação do módulo `AccessControl` em `docs/modules/` (padrão ADR-0008).
+Todos concluídos em 2026-07-20:
+
+- [x] **Nova ADR** substituindo/estendendo a ADR-0006 → **ADR-0012** (perfis
+      configuráveis no lugar de papéis fixos).
+- [x] **ADR de padronização do `AuditEvent`** → **ADR-0013** (taxonomia
+      `<módulo>.<entidade>.<verbo>`, contrato `old`/`new`, emissão atômica e
+      retenção indefinida no MVP).
+- [x] Documentação do módulo em `docs/modules/access-control.md` (padrão ADR-0008).
 
 **Revisão de segurança:** realizada (`security-engineer`). Achados críticos de
 escalada de privilégio resolvidos no design via **postura B** (perfis

@@ -22,6 +22,7 @@ arquitetura, planos de implementacao ou escolhas de dependencias.
 | [ADR-0010](ADR-0010-multi-company-model.md) | Aceita | Modelo multiempresa: Organization (tenant) -> Company (varias por org) -> acesso explicito por usuario |
 | [ADR-0011](ADR-0011-ui-design-system-approach.md) | Aceita | UI: shadcn/ui + Tailwind como base interina; design system formal adiado (ADR proprio) |
 | [ADR-0012](ADR-0012-configurable-profiles-and-permissions.md) | Aceita (substitui parcialmente a ADR-0006) | Perfis configuraveis com permissoes por organizacao, substituindo os papeis fixos da ADR-0006 (modulo `AccessControl`) |
+| [ADR-0013](ADR-0013-audit-event-standard.md) | Aceita | Padrao do `AuditEvent`: taxonomia `<modulo>.<entidade>.<verbo>`, contrato `old`/`new` no `metadata`, emissao atomica e retencao indefinida no MVP |
 
 ## Decisoes Pendentes
 

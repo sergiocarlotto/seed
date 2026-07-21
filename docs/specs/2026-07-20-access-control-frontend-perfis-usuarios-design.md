@@ -222,7 +222,7 @@ type UserRow = { id: string; fullName: string; email: string; status: string;
 
 ## Trabalho relacionado (fora deste design)
 
-- Documentação do módulo `AccessControl` em `docs/modules/` (padrão ADR-0008) —
-  pendência de backend já registrada.
-- ADR formal substituindo a ADR-0006 e ADR de padronização do `AuditEvent` —
-  pendências já listadas no design de backend.
+- Documentação do módulo em `docs/modules/access-control.md` (padrão ADR-0008) —
+  **concluída** em 2026-07-20.
+- ADR formal substituindo a ADR-0006 (**ADR-0012**) e ADR de padronização do
+  `AuditEvent` (**ADR-0013**) — **concluídas** em 2026-07-20.
