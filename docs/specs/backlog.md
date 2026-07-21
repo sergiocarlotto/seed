@@ -29,9 +29,11 @@ com link para o spec gerado, ou remova-a do backlog.
 ## Ideias
 
 ### gestao-usuarios-perfis-permissoes — CRUD de usuários e perfis de permissão
-- **Status:** ✅ virou spec — `docs/specs/2026-07-19-access-control-perfis-permissoes-design.md` (brainstorming + revisão de segurança concluídos; próximo passo: nova ADR + plano)
+- **Status:** ✅ **entregue** — ADR-0012 + ADR-0013, backend e frontend mergeados na `main` em 2026-07-21 (branch `feat/access-control`, 76 commits). O escopo v1 é RBAC configurável; posse/escopo e field-level continuam fora (ver `acesso-postura-a` e o "Fora de escopo (v1)" da spec).
 - **Capturado em:** 2026-07-19
-- **Relacionados:** ADR-0006 (auth/autorização, papéis fixos), ADR-0010 (multiempresa), docs/modules/organizations.md
+- **Relacionados:** ADR-0012, ADR-0013, docs/modules/access-control.md,
+  `docs/specs/2026-07-19-access-control-perfis-permissoes-design.md`,
+  `docs/specs/2026-07-20-access-control-frontend-perfis-usuarios-design.md`
 - **Descrição:** Telas/CRUD para gestão de usuários e um cadastro de "perfis
   de usuário" ao qual o usuário é vinculado, carregando um conjunto de permissões.
   Detalhes definidos com o usuário:
@@ -64,10 +66,26 @@ com link para o spec gerado, ou remova-a do backlog.
   retenção, indexação, paginação) — por isso adiado. Depende do contrato
   padronizado de `AuditEvent`.
 
-### auditevent-padronizacao — Padronização e escala do AuditEvent (ADR)
-- **Status:** ideia
+### auditevent-escala — Escala do armazenamento do AuditEvent
+- **Status:** ideia (o **contrato** já foi decidido na ADR-0013; resta a escala)
+- **Capturado em:** 2026-07-19 · **Atualizado em:** 2026-07-21
+- **Relacionados:** ADR-0013 (padrão do AuditEvent), ADR-0005,
+  docs/modules/access-control.md
+- **Descrição:** A ADR-0013 fechou a parte de **contrato**: taxonomia
+  `<módulo>.<entidade>.<verbo>`, campos obrigatórios, `metadata` com `old`/`new`,
+  emissão atômica com a mutação e retenção **indefinida no MVP**. Ficou de fora,
+  de propósito, a **estratégia de escala do armazenamento**: índices por
+  `(org, occurred_at)` e `(actor, occurred_at)`, **particionamento nativo do
+  PostgreSQL por tempo** (range mensal em `occurred_at`), política de
+  expurgo/arquivamento de partições frias e eventual migração de `metadata` para
+  `jsonb` (se consultar por conteúdo virar requisito). A ADR-0013 adiou isso até
+  existir volume real que justifique — retomar quando houver esse dado.
+
+<!-- Entrada original, preservada para histórico do que a ADR-0013 resolveu: -->
+### ~~auditevent-padronizacao~~ — Padronização do AuditEvent (ADR)
+- **Status:** ✅ resolvida pela **ADR-0013** (2026-07-21)
 - **Capturado em:** 2026-07-19
-- **Relacionados:** ADR-0005, spec access-control (2026-07-19)
+- **Relacionados:** ADR-0013, ADR-0005, spec access-control (2026-07-19)
 - **Descrição:** Formalizar por ADR o contrato comum de `AuditEvent` a todos os
   módulos: `actor_user_id`, `occurred_at`, `organization_id`, `action`
   (`<módulo>.<entidade>.<verbo>`), `target`/`entity`, e `metadata` no formato
@@ -80,6 +98,24 @@ com link para o spec gerado, ou remova-a do backlog.
   de access-control já adota o contrato como padrão de trabalho; a ADR o ratifica
   e decide retenção/particionamento para o sistema. Snapshot/versionamento
   completo por versão (além do diff) é item separado, se necessário.
+
+### ui-polimento-listas-mobile — Polimento de UI das listas e telas de erro
+- **Status:** ideia
+- **Capturado em:** 2026-07-21
+- **Relacionados:** apps/web/CLAUDE.md (convenção mobile), ADR-0011 (UI),
+  `docs/specs/2026-07-20-access-control-frontend-perfis-usuarios-design.md`
+- **Descrição:** Follow-ups menores identificados na validação de ponta a ponta do
+  controle de acesso (2026-07-21), agrupados porque rendem um polimento conjunto:
+  (a) **tabelas → cards no mobile** — a convenção do `apps/web/CLAUDE.md` ainda
+  não foi aplicada em nenhuma lista; confirmado visualmente que `/users` e
+  `/profiles` vazam horizontalmente no viewport de 390px, cortando colunas e as
+  ações; é o item de maior impacto real; (b) **título do topbar nas telas RSC de
+  erro** — 403/404 não chamam `useSetPageHeader`, então o topbar fica sem título;
+  (c) **guard `isServerApiError`** no lugar do cast `as {status?}`;
+  (d) trocar `Button render={<Link/>}` por `<Link className={buttonVariants(…)}>`
+  — o Base UI emite warning de acessibilidade em 13 usos (pré-existente, também
+  em `companies`), e a "correção" sugerida pela lib (`nativeButton={false}`)
+  pioraria a semântica, pondo `role="button"` num link de navegação.
 
 ### acesso-postura-a — Anti-escalada "não conceder além de si" (postura A)
 - **Status:** ideia
