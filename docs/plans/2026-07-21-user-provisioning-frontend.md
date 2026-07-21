@@ -17,9 +17,12 @@ espelho; o backend já recusa.
 **Stack:** TypeScript, React 19, Next.js 16, Tailwind, shadcn/ui (base-ui),
 Vitest (unit), Playwright (e2e).
 
-**Pré-requisito:** o plano de backend
-(`docs/plans/2026-07-21-user-provisioning-backend.md`) concluído e verde,
-inclusive a revisão de segurança.
+**Pré-requisitos:**
+
+1. `docs/plans/2026-07-21-user-provisioning-backend.md` concluído e verde,
+   inclusive a revisão de segurança.
+2. `docs/plans/2026-07-21-zod-form-validation.md` concluído — a Task 6 usa o
+   `userSchema` criado lá.
 
 **Spec:** `docs/specs/2026-07-21-user-provisioning-company-access-design.md`
 
@@ -214,6 +217,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useSetPageHeader } from "@/lib/page-header";
+import { userSchema, firstError } from "@/lib/form-schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -223,8 +227,8 @@ import type { UserRow } from "@/lib/types";
 /**
  * Criação de usuário. O administrador define a senha inicial — não há convite
  * por e-mail (fora do escopo até existir e-mail transacional). A confirmação é
- * conferida só aqui; a força da senha é decidida pelo backend, que devolve a
- * mensagem do Identity. Ao salvar, vai para o detalhe, onde perfis e empresas
+ * conferida só aqui; a política de senha de verdade é do Identity, no backend,
+ * que devolve a mensagem. Ao salvar, vai para o detalhe, onde perfis e empresas
  * são configurados.
  */
 export function UserForm() {
@@ -241,17 +245,20 @@ export function UserForm() {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirm) {
-      setError("As senhas não conferem.");
+    // O schema apara os campos e confere a confirmação (ADR-0002).
+    const parsed = userSchema.safeParse({ fullName, email, password, confirm });
+    if (!parsed.success) {
+      setError(firstError(parsed.error));
       return;
     }
 
     setSaving(true);
     try {
+      // `confirm` não vai para a API: é regra de tela, não campo do contrato.
       const created = await api.post<UserRow>("/users", {
-        fullName: fullName.trim(),
-        email: email.trim(),
-        password,
+        fullName: parsed.data.fullName,
+        email: parsed.data.email,
+        password: parsed.data.password,
       });
       router.push(`/users/${created.id}`);
       router.refresh();
