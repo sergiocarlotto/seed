@@ -225,9 +225,13 @@ pela regra do rótulo humano (ADR-0013, seção 3).
 
 Autorização continua 100% no backend; o frontend é espelho de UX.
 
-- **`/users/new`** — formulário com nome, e-mail, senha e confirmação, validado
-  com Zod (a confirmação é conferida só no cliente; a força da senha é decidida
-  pelo backend, que devolve a mensagem do Identity). Botão "Novo usuário" na
+- **`/users/new`** — formulário com nome, e-mail, senha e confirmação. A
+  validação segue o padrão já praticado em `CompanyForm`/`ProfileForm`:
+  `required` do HTML mais checagem local, sem Zod — a biblioteca consta na
+  ADR-0002 como stack base mas **não está instalada** em `apps/web`, e introduzir
+  dependência não é assunto deste incremento. A confirmação de senha é conferida
+  só no cliente; a força da senha é decidida pelo backend, que devolve a mensagem
+  do Identity. Botão "Novo usuário" na
   lista `/users`, visível com `users.manage`. Ao salvar, redireciona para
   `/users/{id}`, onde perfis e empresas já estão à mão.
 - **`/users/{id}`** — o card "Empresas acessíveis", hoje somente-leitura, vira
