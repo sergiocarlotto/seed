@@ -191,7 +191,7 @@ public class UserProvisioningTests(ApiFactory factory) : IClassFixture<ApiFactor
         var manager = await ClientWithAsync("prov.dup@demo.local", AccessControlPermissions.UsersManage);
         await factory.CreateSecondTenantAsync(
             orgName: "Org Dup", companyName: "Emp Dup",
-            userEmail: "prov.taken@other.local", userPassword: "Dup123!");
+            userEmail: "prov.taken@other.local", userPassword: "Dup1234!");
 
         // O e-mail existe em OUTRA organização: a resposta não pode revelar isso.
         var resp = await manager.PostAsJsonAsync("/users", new
@@ -836,7 +836,7 @@ helpers e os testes abaixo dentro da classe existente:
         var owner = await factory.CreateAdminClientAsync();
         var other = await factory.CreateSecondTenantAsync(
             orgName: "Org Acc", companyName: "Emp Acc",
-            userEmail: "acc@other.local", userPassword: "Acc123!");
+            userEmail: "acc@other.local", userPassword: "Acc12345!");
         var localTarget = await CreateMemberAsync("acc.cross.target@demo.local");
 
         Guid foreignUserId;
