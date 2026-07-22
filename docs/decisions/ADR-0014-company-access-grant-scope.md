@@ -43,7 +43,15 @@ Regras derivadas:
    chamador só lista o que ele pode conceder.
 3. O **owner é isento** por ter a organização inteira como escopo. É o mesmo
    piso antilockout da ADR-0012, e é o que destrava uma **empresa órfã** — aquela
-   cujo único usuário com acesso foi desativado.
+   cujo único usuário com acesso foi desativado, ou aquela cujas concessões foram
+   todas revogadas.
+   Para que isso seja verdade, o owner tem **bypass também na leitura** do eixo
+   de empresa: ele enxerga todas as empresas da própria organização, com ou sem
+   concessão explícita. Sem esse bypass a isenção seria vazia — o owner teria
+   escopo total de escrita e nenhum caminho para descobrir o id da órfã, e a
+   recuperação exigiria acesso ao banco. O filtro por organização nesse ramo é
+   obrigatório e vem sempre da sessão: é o que separa "dono da organização" de
+   "vê tudo no banco".
 4. O **owner alvo** pode ter suas empresas alteradas, ao contrário de status e
    perfis, onde é somente-leitura. Ele está sujeito ao eixo de empresa, então
    precisa poder receber acesso, e sempre consegue se reconceder.
@@ -64,6 +72,19 @@ O eixo funcional **permanece em postura B**: `profiles.manage` e
   funcional. A assimetria é deliberada e vem do custo de implementação, não de
   uma diferença de risco; a evolução do eixo funcional para a postura A segue no
   backlog.
+- **O owner deixa de estar sujeito ao eixo de empresa.** A ADR-0012 dizia que o
+  bypass do owner era só funcional e que ele "continua sujeito ao eixo de
+  empresa"; com o bypass de leitura desta ADR, isso passa a valer apenas para os
+  demais usuários. A mudança é a consequência necessária da regra 3 e substitui
+  aquela frase da ADR-0012 no que toca **exclusivamente ao owner**.
+- Como o mesmo caminho de leitura serve a editar e excluir empresa, o owner
+  também passa a editar e excluir qualquer empresa da organização sem concessão
+  prévia. Isso **não amplia o poder efetivo dele**: o owner já podia se conceder
+  acesso a qualquer empresa (regra 3 + regra 4) e então editá-la — o bypass
+  elimina o passo intermediário, não uma barreira. Continua atrás do gate
+  `companies.manage`, que o owner detém pelo bypass funcional da ADR-0012.
+- Revogar todas as concessões de uma empresa deixa de ser destrutivo em termos
+  práticos: a empresa some para os não-owners, mas o owner continua a alcançando.
 
 ## Alternativas Consideradas
 
@@ -92,7 +113,11 @@ Esta decisão permanece válida se:
 - empresa fora do escopo continuar respondendo 404, nunca 403;
 - concessões fora do escopo do chamador forem preservadas em vez de removidas;
 - o owner mantiver escopo total e continuar capaz de destravar empresa órfã;
-- as regras permanecerem cobertas por teste de integração.
+- o bypass de leitura do owner permanecer **limitado à própria organização** —
+  é a única linha que separa esta decisão de um vazamento entre tenants, e ela
+  tem de continuar coberta por teste;
+- as regras permanecerem cobertas por teste de integração, **nas duas direções**
+  (usuário→empresa e empresa→usuário).
 
 ## Decisões Relacionadas
 
