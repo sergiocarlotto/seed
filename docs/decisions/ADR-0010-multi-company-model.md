@@ -2,7 +2,16 @@
 
 ## Status
 
-Aceita
+Aceita (parcialmente substituida pela ADR-0014 e pela ADR-0012)
+
+A regra de **visibilidade por empresa sempre explicita** foi parcialmente
+substituida pela ADR-0014: o **owner** da organizacao enxerga (e, pelo mesmo
+caminho de leitura, edita e exclui) qualquer empresa da propria organizacao sem
+`UserCompanyAccess`. Para os demais usuarios a regra continua valendo integral.
+O papel de gestao `orgRole` (`Admin`/`Member`) foi substituido pela ADR-0012
+(perfis configuraveis: `companies.access`, `companies.manage`). O restante —
+modelo de tres niveis, isolamento duro por organizacao, `UserCompanyAccess` como
+concessao explicita e 404 fora de escopo — permanece valido.
 
 ## Contexto
 
@@ -40,7 +49,10 @@ Regras de acesso (aplicadas no backend):
   usuario autenticado; nada cruza organizacoes.
 - **Visibilidade por empresa sempre explicita**: um usuario so ve/edita uma
   empresa se existir `UserCompanyAccess` correspondente — inclusive o admin. Nao
-  ha "ver todas" automatico.
+  ha "ver todas" automatico. **Excecao aberta pela ADR-0014**: o **owner**
+  (`is_owner`) enxerga, edita e exclui todas as empresas da propria organizacao
+  sem concessao explicita — e o piso antilockout que destrava a empresa orfa. O
+  filtro por organizacao continua obrigatorio nesse ramo.
 - **Gestao**: apenas `orgRole = Admin` cria, edita e exclui empresas. Ao criar
   uma empresa, o criador recebe automaticamente o acesso a ela.
 - **Membro** so acessa as empresas concedidas; nao cria empresas.
@@ -57,9 +69,14 @@ em ambiente de desenvolvimento.
   `organization_id` e `org_role`.
 - O CRUD de empresa opera sobre `Company`, sempre filtrado por acesso.
 - Fica registrado como trabalho futuro: painel super-admin para provisionar
-  organizacoes; convite e gestao de usuarios (dependem de email transacional);
-  UI para conceder/revogar acesso de empresas a outros usuarios; campos ricos da
-  empresa (CNPJ, endereco).
+  organizacoes; **convite por email** (depende de email transacional); campos
+  ricos da empresa (CNPJ, endereco).
+  Ja entregues desde entao: a **gestao de usuarios** (criar com senha inicial
+  definida pelo administrador, listar, ativar/desativar — modulo
+  `access-control`), que nunca dependeu de email transacional, e a **UI de
+  conceder/revogar acesso de empresas** a outros usuarios, nas duas direcoes
+  (pela pessoa e pela empresa), sob a permissao `companies.grant_access` e o
+  escopo concedivel da ADR-0014.
 - A ADR-0005 permanece valida; esta ADR apenas detalha o nivel abaixo da
   organizacao e o escopo de acesso por usuario.
 
@@ -74,6 +91,13 @@ Rejeitada. Nao suporta multiempresa nem o acesso por usuario dentro da conta.
 Rejeitada. O dono da decisao definiu que a visibilidade e **sempre explicita por
 empresa**, inclusive para administradores (que se auto-concedem ao criar).
 
+Nota (ADR-0014): esta alternativa foi depois concedida ao **owner**, e apenas a
+ele — nao aos administradores em geral. O racional e antilockout, nao
+conveniencia: ao tornar o eixo de empresa revogavel, a ADR-0014 criou a
+possibilidade de uma **empresa orfa** (sem nenhum usuario com acesso), que sem um
+caminho de leitura so seria recuperavel pelo banco. Quem tem `companies.manage`
+sem ser owner continua sujeito a concessao explicita.
+
 ### Auto-cadastro de organizacao (self-service)
 
 Rejeitada para o MVP. Organizacoes sao provisionadas por nos; no MVP via seed,
@@ -84,7 +108,9 @@ futuramente via painel super-admin.
 Esta decisao permanece valida se:
 
 - nenhum dado cruza organizacoes;
-- um usuario so acessa empresas concedidas a ele, dentro da sua organizacao;
+- um usuario **nao-owner** so acessa empresas concedidas a ele, dentro da sua
+  organizacao; o **owner** alcanca toda a propria organizacao (ADR-0014) e
+  nenhuma empresa fora dela;
 - apenas administradores criam/editam/excluem empresas;
 - acesso sem concessao ou cross-tenant responde 404;
 - o comportamento e coberto por testes de integracao.

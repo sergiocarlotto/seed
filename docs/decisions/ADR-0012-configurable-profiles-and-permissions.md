@@ -2,7 +2,14 @@
 
 ## Status
 
-Aceita
+Aceita (parcialmente substituida pela ADR-0014)
+
+A frase de que o owner "continua sujeito ao eixo de empresa" foi substituida pela
+ADR-0014: o owner passa a ter bypass **tambem no eixo de empresa**, limitado a
+propria organizacao, e por consequencia suas empresas sao editaveis por
+`PUT /users/{id}/companies`. Isso vale **exclusivamente para o owner**; os demais
+usuarios continuam sujeitos a concessao explicita. O modelo de perfis, os dois
+eixos, a postura B no eixo funcional e o restante permanecem validos.
 
 ## Contexto
 
@@ -50,10 +57,14 @@ um novo modulo backend `AccessControl`, substituindo os papeis fixos.
 - **`UserProfile`**: um usuario pode ter **varios perfis**; a permissao efetiva e
   a **uniao** das permissoes dos perfis `active` vinculados.
 - **Owner**: `is_owner` (flag tecnico) substitui o papel `owner`. Tem bypass
-  funcional completo, mas continua sujeito ao eixo de empresa. E **gerido fora da
-  aplicacao** (banco no MVP; superadmin externo no futuro); a aplicacao nunca
-  cria, remove nem edita owner, e o trata como somente-leitura na gestao de
-  usuarios.
+  funcional completo, mas continua sujeito ao eixo de empresa. **Substituido pela
+  ADR-0014**: o owner passou a ter bypass tambem no eixo de empresa, dentro da
+  propria organizacao — ele alcanca todas as empresas da org com ou sem
+  `UserCompanyAccess`. E **gerido fora da aplicacao** (banco no MVP; superadmin
+  externo no futuro); a aplicacao nunca cria, remove nem edita owner, e o trata
+  como somente-leitura **quanto a `status` e perfis** na gestao de usuarios — as
+  **empresas** do owner sao editaveis por `PUT /users/{id}/companies` (regra 4 da
+  ADR-0014).
 
 ### Dois eixos de autorizacao
 
@@ -154,7 +165,8 @@ Esta decisao permanece valida se:
 - revogacao de permissao/perfil bloquear no proximo request (sem cache entre
   requests);
 - perfis `is_system` so forem atribuiveis pelo owner e o owner permanecer
-  somente-leitura na app;
+  somente-leitura na app **quanto a `status` e perfis** (suas empresas sao
+  editaveis — ADR-0014, regra 4);
 - campos sensiveis nunca forem aceitos do cliente;
 - tentativa de escalada e acesso cross-tenant forem bloqueadas e cobertas por
   teste;

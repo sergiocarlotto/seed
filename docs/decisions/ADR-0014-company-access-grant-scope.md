@@ -27,7 +27,7 @@ Adotar a **postura A no eixo de empresa**, por meio de um único conceito:
 
 **Escopo concedível do chamador**
 
-- **owner** → todas as empresas ativas da organização;
+- **owner** → todas as empresas não excluídas da organização;
 - **não-owner** → as empresas do próprio `UserCompanyAccess`.
 
 Regras derivadas:
@@ -53,8 +53,12 @@ Regras derivadas:
    obrigatório e vem sempre da sessão: é o que separa "dono da organização" de
    "vê tudo no banco".
 4. O **owner alvo** pode ter suas empresas alteradas, ao contrário de status e
-   perfis, onde é somente-leitura. Ele está sujeito ao eixo de empresa, então
-   precisa poder receber acesso, e sempre consegue se reconceder.
+   perfis, onde é somente-leitura. O motivo **não** é sujeição ao eixo de empresa
+   — a regra 3 o isenta: é que alterar as concessões dele **não cria risco de
+   lockout** (seu alcance vem do bypass, não das linhas de `UserCompanyAccess`) e
+   as concessões continuam sendo registro útil, tanto para a tela espelho quanto
+   para a auditoria. Bloquear a edição protegeria contra nada e criaria um caso
+   especial a mais.
 
 O eixo funcional **permanece em postura B**: `profiles.manage` e
 `profiles.assign` continuam privilégios administrativos de fato, com perfis
@@ -123,6 +127,10 @@ Esta decisão permanece válida se:
 
 - ADR-0012 (perfis configuráveis, dois eixos, postura B) — decisão que esta
   refina no eixo de empresa.
-- ADR-0010 (modelo multiempresa, origem do `UserCompanyAccess`).
+- ADR-0010 (modelo multiempresa, origem do `UserCompanyAccess`) — esta ADR a
+  **substitui parcialmente**: a regra de "visibilidade por empresa sempre
+  explícita, inclusive o admin" deixa de valer **para o owner**, que passa a ver,
+  editar e excluir qualquer empresa da própria organização sem concessão. Para os
+  demais usuários a regra da ADR-0010 permanece integral.
 - ADR-0013 (padrão do `AuditEvent`) — contrato dos eventos de concessão.
 - Design: `docs/specs/2026-07-21-user-provisioning-company-access-design.md`.

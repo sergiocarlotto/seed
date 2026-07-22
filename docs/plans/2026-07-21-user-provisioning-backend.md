@@ -735,12 +735,12 @@ helpers e os testes abaixo dentro da classe existente:
 
         var grant = await owner.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = new[] { orphanId } });
-        Assert.Equal(HttpStatusCode.OK, grant.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, grant.StatusCode);
         Assert.Contains(orphanId, await CompaniesOfAsync(targetId));
 
         var revoke = await owner.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = Array.Empty<Guid>() });
-        Assert.Equal(HttpStatusCode.OK, revoke.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, revoke.StatusCode);
         Assert.Empty(await CompaniesOfAsync(targetId));
     }
 
@@ -777,7 +777,7 @@ helpers e os testes abaixo dentro da classe existente:
         // Dentro do escopo: concede.
         var ok = await granter.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = new[] { mine } });
-        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, ok.StatusCode);
 
         // Fora do escopo: 404 (não revela que a empresa existe).
         var denied = await granter.PutAsJsonAsync($"/users/{targetId}/companies",
@@ -823,7 +823,7 @@ helpers e os testes abaixo dentro da classe existente:
         // Envia só o que enxerga. A concessão fora do escopo NÃO pode sumir.
         var resp = await granter.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = new[] { mine } });
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
 
         var companies = await CompaniesOfAsync(targetId);
         Assert.Contains(mine, companies);
@@ -905,7 +905,7 @@ helpers e os testes abaixo dentro da classe existente:
         // Ao contrário de status e perfis, o eixo de empresa é editável no owner.
         var resp = await owner.PutAsJsonAsync($"/users/{ownerId}/companies",
             new { companyIds = desired });
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
         Assert.Contains(companyId, await CompaniesOfAsync(ownerId));
     }
 
@@ -1235,6 +1235,9 @@ E o endpoint, ao final da classe:
 ```csharp
     // Eixo de empresa: gate próprio (companies.grant_access), distinto de
     // users.manage. O conjunto vale DENTRO do escopo concedível (ADR-0014).
+    // Responde 204: devolver o UserDto entregaria os chips de perfil do usuário
+    // a quem só tem companies.grant_access, o mesmo cadastro que a tela espelho
+    // (GET /companies/{id}/users) nega. O frontend não lê o corpo.
     [HttpPut("{id:guid}/companies")]
     [RequirePermission(CompaniesPermissions.GrantAccess)]
     public async Task<IActionResult> SetCompanies(Guid id, SetUserCompaniesRequest req, CancellationToken ct)
@@ -1242,13 +1245,18 @@ E o endpoint, ao final da classe:
         try
         {
             await companyAccess.SetUserCompaniesAsync(id, req, ct);
-            var u = await service.GetAsync(id, ct);
-            return u is null ? NotFound() : Ok(u);
+            return NoContent();
         }
+        catch (CompanyAccessValidationException ex) { return BadRequest(new { error = ex.Message }); }
         catch (CompanyAccessNotFoundException) { return NotFound(); }
         catch (CompanyAccessConflictException ex) { return Conflict(new { error = ex.Message }); }
     }
 ```
+
+> **Por que 204 e não o `UserDto`:** este endpoint tem gate de
+> `companies.grant_access`, não de `users.manage`. Responder com o usuário
+> completo vazaria os perfis dele para quem só pode mexer em empresas — o mesmo
+> dado que a tela espelho (`GET /companies/{id}/users`) recusa a entregar.
 
 - [ ] **Passo 7: rodar e confirmar que passa**
 

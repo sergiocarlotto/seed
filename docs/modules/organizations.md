@@ -55,8 +55,11 @@ Modelo detalhado: ADR-0010 e
   (`PUT /users/{id}/companies`) — a visao "pela pessoa".
 - Listar os usuarios da organizacao marcando quem tem acesso a uma empresa e
   definir esse conjunto (`GET /companies/{id}/users`, `PUT /companies/{id}/users`)
-  — a visao "pela empresa". O `GET` devolve so `id`, `fullName`, `email` e
-  `hasAccess`: o minimo para escolher, sem o restante do cadastro.
+  — a visao "pela empresa". O `GET` devolve so `id`, `fullName`, `email`,
+  `hasAccess` e `isOwner`: o minimo para escolher, sem o restante do cadastro.
+  `hasAccess` e estritamente a concessao **explicita**; `isOwner` vem separado
+  porque o owner alcanca a empresa por bypass (ADR-0014) sem ter linha de
+  `UserCompanyAccess` — a tela mostra o acesso efetivo sem falsear o registro.
 
 ## Regras de Negocio
 
@@ -73,7 +76,7 @@ Modelo detalhado: ADR-0010 e
 - Acesso a empresa sem concessao ou de outra organizacao responde 404 (para o
   owner, so o caso "de outra organizacao" sobra).
 - **Escopo concedivel do chamador** (ADR-0014) governa toda concessao/revogacao:
-  o **owner** alcanca todas as empresas ativas da organizacao; o **nao-owner**,
+  o **owner** alcanca todas as empresas nao excluidas da organizacao; o **nao-owner**,
   apenas as empresas do proprio `UserCompanyAccess`. Quem nao acessa nenhuma
   empresa nao concede nenhuma.
 - Empresa fora do escopo concedivel (inclusive de outra organizacao ou
@@ -88,9 +91,12 @@ Modelo detalhado: ADR-0010 e
   dela o payload e o conjunto completo, ja que todo usuario da organizacao e alvo
   legitimo.
 - **O owner alvo pode ter suas empresas alteradas** — diferente de status e
-  perfis, onde e somente-leitura: ele esta sujeito ao eixo de empresa e sempre
-  consegue se reconceder. O escopo total do owner e tambem o que destrava uma
-  **empresa orfa**, aquela que ficou sem nenhum usuario com acesso.
+  perfis, onde e somente-leitura. O motivo nao e sujeicao ao eixo de empresa (o
+  owner e isento dele desde a ADR-0014): e que alterar as concessoes dele nao
+  cria risco de lockout — o alcance do owner vem do bypass, nao das linhas de
+  `UserCompanyAccess` — e o registro continua util para a tela espelho e para a
+  auditoria. O escopo total do owner e tambem o que destrava uma **empresa
+  orfa**, aquela que ficou sem nenhum usuario com acesso.
 - Corrida no indice unico `(userId, companyId)` (`23505`) e remocao concorrente
   sao traduzidas para **409**, no mesmo padrao de `SetProfilesAsync`.
 
@@ -113,7 +119,10 @@ Modelo detalhado: ADR-0010 e
 ## Criterios de Aceite
 
 Status: **atendidos** (implementado e verificado em 2026-07-18 na branch
-`feat/organizations-login-empresa`).
+`feat/organizations-login-empresa`). Os itens de **concessao de acesso a
+empresa** e do **bypass de leitura do owner** foram acrescentados e verificados
+em 2026-07-22 na branch `feat/user-provisioning` (1 unit + 79 de integracao no
+backend, e2e 13/13).
 
 - [x] Seed cria organizacao Demo + admin (`admin@demo.local`) + empresa concedida.
 - [x] Login por email+senha (cookie httpOnly); `/auth/me` sem sessao = 401.
@@ -127,6 +136,38 @@ Status: **atendidos** (implementado e verificado em 2026-07-18 na branch
 - [x] Testes de integracao verdes (acesso explicito, cross-tenant, sem permissao,
       usuario desativado bloqueado).
 - [x] Frontend (shadcn/ui): login e CRUD de empresa via Docker (same-origin).
+- [x] `companies.grant_access` entra no catalogo pelo reconciliador do boot.
+- [x] `PUT /users/{id}/companies` concede e revoga com efeito real e responde
+      **204** (nao devolve o `UserDto`: vazaria os perfis do usuario para quem so
+      tem `companies.grant_access`).
+- [x] Os tres endpoints de concessao exigem `companies.grant_access`: sem a
+      permissao, 403 — inclusive `PUT /users/{id}/companies`, que mora sob
+      `/users`.
+- [x] **Escopo concedivel** respeitado: nao-owner nao concede empresa fora do
+      proprio acesso (404); owner alcanca qualquer empresa da org, inclusive a
+      **orfa**.
+- [x] Concessoes **fora do escopo do chamador sao preservadas** no `PUT` por
+      usuario, em vez de removidas por ausencia no payload.
+- [x] Empresa/usuario de outra organizacao e empresa soft-deleted respondem
+      **404, nunca 403**.
+- [x] Lista ausente (`{}`) responde **400** e preserva as concessoes; so `[]`
+      esvazia — nos dois sentidos.
+- [x] **Owner alvo** pode ter as empresas alteradas (status e perfis seguem
+      somente-leitura).
+- [x] **Bypass de leitura do owner**: lista e abre empresa sem nenhuma concessao,
+      **sem nunca cruzar organizacoes**; o nao-owner nao recebe o bypass.
+- [x] O bypass funcional nao dispensa `companies.access`: os dois eixos seguem
+      valendo para os demais usuarios.
+- [x] `GET /companies/{id}/users` devolve so `id`, `fullName`, `email`,
+      `hasAccess` e `isOwner`, marcando quem tem concessao explicita; `PUT`
+      substitui o conjunto.
+- [x] Eventos `company_access_granted`/`revoked` emitidos por empresa tocada, com
+      `old`/`new` corretos.
+- [ ] Corrida no indice unico `(userId, companyId)` traduzida para **409**:
+      implementada em `CompanyAccessService.SaveAsync`, **sem teste dedicado**
+      (a corrida nao e reproduzivel de forma deterministica na suite atual).
+- [x] E2E (Playwright): criar usuario e conceder-lhe a primeira empresa sobre a
+      stack real.
 
 ## Eventos de Auditoria
 

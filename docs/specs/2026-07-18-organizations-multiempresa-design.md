@@ -47,6 +47,13 @@ Relações: `Organization` 1—N `Company`; `Organization` 1—N `User`;
 - **Visibilidade por empresa (sempre explícita):** o usuário só vê/edita uma
   empresa se existir `UserCompanyAccess` para (usuário, empresa) — **inclusive o
   admin**. Não há "ver todas" automático.
+
+  > **Atualizado em 2026-07-22 (ADR-0014):** vale para todos os usuários
+  > **menos o owner** (`is_owner`), que enxerga, edita e exclui todas as empresas
+  > não excluídas da própria organização sem concessão. O filtro por organização
+  > continua obrigatório nesse ramo. `orgRole` (`Admin`/`Member`), citado nas
+  > regras abaixo, foi removido pela ADR-0012: o gate hoje é `companies.access` /
+  > `companies.manage`.
 - **Gestão:** apenas `orgRole = Admin` pode criar empresas (e, no futuro,
   conceder/revogar acesso e gerir usuários). Ao criar uma empresa, o criador
   recebe automaticamente a concessão de acesso a ela.

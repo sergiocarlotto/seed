@@ -143,6 +143,15 @@ Rota `/users` (lista) e `/users/[id]` (detalhe).
     Empresas.
   - Owner → status e perfis não editáveis (somente leitura).
 
+  > **Atualizado em 2026-07-22 (ADR-0014):** a lista de empresas do detalhe do
+  > usuário **deixou de ser só-leitura**. A concessão é editável na própria tela
+  > do usuário (`PUT /users/{id}/companies`, gate `companies.grant_access`,
+  > resposta 204) e também pela tela da empresa (`GET`/`PUT
+  > /companies/{id}/users`) — as duas direções sobre o mesmo serviço. O conjunto
+  > salvo vale **dentro do escopo concedível do chamador**; concessões fora dele
+  > são preservadas. As **empresas do owner alvo são editáveis** (ao contrário de
+  > status e perfis, que seguem só-leitura).
+
 ## Componentes e arquivos
 
 **Primitivos shadcn a adicionar** (via CLI shadcn, base-ui): `checkbox`, `switch`,
