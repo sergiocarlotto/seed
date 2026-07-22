@@ -37,12 +37,20 @@ npm --prefix apps/web run build
 ```
 
 O e2e exige a API de pé. **Não** suba o serviço `web` do compose junto — ele
-disputa a porta 3000 com o dev server:
+disputa a porta 3000 com o dev server; se já estiver rodando, pare com
+`docker compose stop web` e restaure depois.
+
+Invoque o Playwright **de dentro de `apps/web`**. A forma `npm --prefix apps/web
+exec playwright ...` não resolve o `baseURL` do `playwright.config.ts` neste
+ambiente e falha com `page.goto: Cannot navigate to invalid URL`:
 
 ```
 docker compose up -d db api
-npm --prefix apps/web run e2e
+cd apps/web; npx playwright test
 ```
+
+Ao rodar `docker compose` a partir do worktree, aponte `--env-file` para o `.env`
+do repositório principal — sem isso os containers são recriados com senha vazia.
 
 Se o banco responder `28P01`, a senha do volume `pgdata` diverge do `.env`.
 Conserte **sem apagar o volume**:
