@@ -48,6 +48,12 @@ public class CompanyAccessService(
 
     public async Task SetUserCompaniesAsync(Guid userId, SetUserCompaniesRequest req, CancellationToken ct)
     {
+        // Lista ausente não pode significar "revogue tudo": só `[]` esvazia.
+        // Validado ANTES de qualquer consulta ao alvo para que o 400 não dependa
+        // da existência dele — senão `{}` viraria um oráculo de existência.
+        if (req.CompanyIds is null)
+            throw new CompanyAccessValidationException("Lista de empresas obrigatória.");
+
         var (orgId, callerId, isOwner) = await CallerAsync(ct);
 
         var targetExists = await db.Users.AnyAsync(u => u.Id == userId && u.OrganizationId == orgId, ct);
@@ -55,7 +61,7 @@ public class CompanyAccessService(
             throw new CompanyAccessNotFoundException("Usuário inexistente nesta organização.");
 
         var scope = await GrantableScopeAsync(orgId, callerId, isOwner, ct);
-        var requested = (req.CompanyIds ?? []).Distinct().ToList();
+        var requested = req.CompanyIds.Distinct().ToList();
 
         // Empresa fora do escopo é indistinguível de inexistente (ADR-0014).
         if (requested.Any(id => !scope.Contains(id)))
@@ -100,12 +106,17 @@ public class CompanyAccessService(
 
     public async Task SetCompanyUsersAsync(Guid companyId, SetCompanyUsersRequest req, CancellationToken ct)
     {
+        // Mesma regra do outro sentido: ausente não é `[]` (ver SetUserCompanies).
+        if (req.UserIds is null)
+            throw new CompanyAccessValidationException("Lista de usuários obrigatória.");
+
         var (orgId, callerId, isOwner) = await CallerAsync(ct);
+
         var scope = await GrantableScopeAsync(orgId, callerId, isOwner, ct);
         if (!scope.Contains(companyId))
             throw new CompanyAccessNotFoundException("Empresa inexistente nesta organização.");
 
-        var requested = (req.UserIds ?? []).Distinct().ToList();
+        var requested = req.UserIds.Distinct().ToList();
         var validCount = requested.Count == 0 ? 0 : await db.Users
             .CountAsync(u => requested.Contains(u.Id) && u.OrganizationId == orgId, ct);
         if (validCount != requested.Count)
@@ -138,7 +149,13 @@ public class CompanyAccessService(
             return;
         }
 
-        var names = await db.Companies.Where(c => touched.Contains(c.Id))
+        // Filtro de organização defensivo: `touched` já é subconjunto do escopo
+        // concedível, que é intra-org, então hoje é redundante. Fica porque esta
+        // é a única query do serviço sem recorte de tenant — um afrouxamento
+        // futuro na checagem de escopo a montante viraria vazamento de nome de
+        // empresa alheia direto para o AuditEvent, que é append-only.
+        var names = await db.Companies
+            .Where(c => touched.Contains(c.Id) && c.OrganizationId == orgId)
             .ToDictionaryAsync(c => c.Id, c => c.Name, ct);
 
         var now = clock.UtcNow;

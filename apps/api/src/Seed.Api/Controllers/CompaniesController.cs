@@ -70,6 +70,7 @@ public class CompaniesController(
             await companyAccess.SetCompanyUsersAsync(id, req, ct);
             return NoContent();
         }
+        catch (CompanyAccessValidationException ex) { return BadRequest(new { error = ex.Message }); }
         catch (CompanyAccessNotFoundException) { return NotFound(); }
         catch (CompanyAccessConflictException ex) { return Conflict(new { error = ex.Message }); }
     }

@@ -31,6 +31,11 @@ public class UserService(
     // longo entraria por request e seria copiado para AuditEvents, append-only.
     private const int FullNameMaxLength = 200;
 
+    // Teto das colunas UserName/Email do Identity (varchar(256)). Sem a checagem
+    // aqui, um e-mail maior chega ao INSERT e o Postgres devolve 22001, que não
+    // casa com o filtro de 23505 abaixo e escapa como 500 em vez de 400.
+    private const int EmailMaxLength = 256;
+
     // Contexto do chamador: organização + se é owner (define quem mexe em is_system).
     private async Task<(Guid OrgId, bool IsOwner)> CallerAsync(CancellationToken ct)
     {
@@ -66,6 +71,9 @@ public class UserService(
             throw new UserValidationException(
                 $"Nome deve ter no máximo {FullNameMaxLength} caracteres.");
         if (email.Length == 0) throw new UserValidationException("E-mail obrigatório.");
+        if (email.Length > EmailMaxLength)
+            throw new UserValidationException(
+                $"E-mail deve ter no máximo {EmailMaxLength} caracteres.");
 
         // Transação explícita porque UserManager.CreateAsync chama SaveChanges por
         // conta própria. Sem ela, auditar antes deixaria o evento pendurado no

@@ -379,4 +379,142 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         // companies.manage NÃO habilita conceder acesso — são gates distintos.
         Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
     }
+
+    [Fact]
+    public async Task Set_company_users_is_404_outside_caller_scope()
+    {
+        // Espelho de Non_owner_cannot_grant_company_outside_own_scope na direção
+        // empresa→usuário: a mesma trava da ADR-0014 vale nos dois endpoints.
+        var granterId = await CreateMemberAsync("acc.setscope.granter@demo.local");
+        await CreateCompanyAsync("Emp Set Escopo Minha", grantTo: granterId);
+        var outside = await CreateCompanyAsync("Emp Set Escopo Fora");
+        await GivePermissionsAsync(granterId, "Perfil Set Escopo", CompaniesPermissions.GrantAccess);
+
+        var granter = await factory.CreateLoggedInClientAsync(
+            "acc.setscope.granter@demo.local", ApiFactory.MemberPassword);
+        var targetId = await CreateMemberAsync("acc.setscope.target@demo.local");
+
+        var resp = await granter.PutAsJsonAsync($"/companies/{outside}/users",
+            new { userIds = new[] { targetId } });
+
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+        Assert.DoesNotContain(outside, await CompaniesOfAsync(targetId));
+    }
+
+    [Fact]
+    public async Task Set_company_users_with_foreign_user_is_404()
+    {
+        var owner = await factory.CreateAdminClientAsync();
+        var companyId = await CreateCompanyAsync("Emp Set Users Local");
+        await factory.CreateSecondTenantAsync(
+            orgName: "Org Set Users", companyName: "Emp Set Users Outra",
+            userEmail: "setusers@other.local", userPassword: "Setuser123!");
+
+        Guid foreignUserId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+            foreignUserId = await db.Users.Where(u => u.Email == "setusers@other.local")
+                .Select(u => u.Id).FirstAsync();
+        }
+
+        var resp = await owner.PutAsJsonAsync($"/companies/{companyId}/users",
+            new { userIds = new[] { foreignUserId } });
+
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+        Assert.DoesNotContain(companyId, await CompaniesOfAsync(foreignUserId));
+    }
+
+    [Fact]
+    public async Task Absent_company_list_is_400_and_preserves_grants()
+    {
+        // `{}` (chave ausente) não é `[]`: bug de cliente ou payload truncado não
+        // pode virar revogação total em silêncio — é assim que nasce empresa órfã.
+        var owner = await factory.CreateAdminClientAsync();
+        var targetId = await CreateMemberAsync("acc.nulllist.target@demo.local");
+        var companyId = await CreateCompanyAsync("Emp Lista Ausente", grantTo: targetId);
+
+        var resp = await owner.PutAsJsonAsync($"/users/{targetId}/companies", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        Assert.Contains(companyId, await CompaniesOfAsync(targetId));
+    }
+
+    [Fact]
+    public async Task Absent_user_list_is_400_and_preserves_grants()
+    {
+        var owner = await factory.CreateAdminClientAsync();
+        var targetId = await CreateMemberAsync("acc.nulllist.user@demo.local");
+        var companyId = await CreateCompanyAsync("Emp Usuarios Ausentes", grantTo: targetId);
+
+        var resp = await owner.PutAsJsonAsync($"/companies/{companyId}/users", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        Assert.Contains(companyId, await CompaniesOfAsync(targetId));
+    }
+
+    // --- Bypass de leitura do owner no eixo de empresa (ADR-0014, regra 3) ---
+
+    [Fact]
+    public async Task Owner_lists_company_without_any_grant()
+    {
+        var owner = await factory.CreateAdminClientAsync();
+        // Empresa órfã: nenhuma linha de UserCompanyAccess aponta para ela.
+        var orphanId = await CreateCompanyAsync("Emp Orfa Listagem");
+
+        var companies = await owner.GetFromJsonAsync<List<CompanyDto>>("/companies");
+
+        Assert.NotNull(companies);
+        Assert.Contains(companies!, c => c.Id == orphanId);
+    }
+
+    [Fact]
+    public async Task Owner_gets_company_without_any_grant()
+    {
+        var owner = await factory.CreateAdminClientAsync();
+        var orphanId = await CreateCompanyAsync("Emp Orfa Detalhe");
+
+        var resp = await owner.GetAsync($"/companies/{orphanId}");
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var company = await resp.Content.ReadFromJsonAsync<CompanyDto>();
+        Assert.Equal(orphanId, company!.Id);
+    }
+
+    [Fact]
+    public async Task Owner_read_bypass_never_crosses_organizations()
+    {
+        // O ponto do bypass é destravar a PRÓPRIA organização. Se ele varresse
+        // db.Companies sem filtrar por organização, o owner de qualquer tenant
+        // enxergaria as empresas de todos — pior vazamento possível do produto.
+        var owner = await factory.CreateAdminClientAsync();
+        var other = await factory.CreateSecondTenantAsync(
+            orgName: "Org Bypass", companyName: "Emp Bypass",
+            userEmail: "bypass@other.local", userPassword: "Bypass123!");
+
+        var companies = await owner.GetFromJsonAsync<List<CompanyDto>>("/companies");
+        Assert.NotNull(companies);
+        Assert.DoesNotContain(companies!, c => c.Id == other.CompanyId);
+        Assert.DoesNotContain(companies!, c => c.Name == other.CompanyName);
+
+        var resp = await owner.GetAsync($"/companies/{other.CompanyId}");
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Non_owner_does_not_get_the_read_bypass()
+    {
+        // O bypass é do owner, não da permissão: companies.access continua
+        // limitada ao UserCompanyAccess do próprio usuário.
+        var client = await factory.CreateClientWithPermissionsAsync(
+            "acc.bypass.member@demo.local", CompaniesPermissions.Access);
+        var orphanId = await CreateCompanyAsync("Emp Orfa Nao Owner");
+
+        var companies = await client.GetFromJsonAsync<List<CompanyDto>>("/companies");
+        Assert.NotNull(companies);
+        Assert.DoesNotContain(companies!, c => c.Id == orphanId);
+
+        var resp = await client.GetAsync($"/companies/{orphanId}");
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
 }

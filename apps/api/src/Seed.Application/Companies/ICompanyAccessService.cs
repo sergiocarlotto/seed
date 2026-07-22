@@ -8,10 +8,19 @@ public class CompanyAccessNotFoundException(string message) : Exception(message)
 // CompanyId) ou remoção simultânea da mesma linha). → 409.
 public class CompanyAccessConflictException(string message) : Exception(message);
 
+// Payload malformado — hoje, lista ausente onde o endpoint DEFINE um conjunto. → 400.
+public class CompanyAccessValidationException(string message) : Exception(message);
+
 // Usuário da organização, com a marca de quem já tem acesso à empresa em foco.
 public record CompanyUserAccessDto(Guid Id, string FullName, string Email, bool HasAccess);
 
 // Requests (allow-list — organização e ator vêm sempre da sessão).
+//
+// A lista continua anulável no contrato para que a AUSÊNCIA da chave seja
+// detectável e vire 400. Ausente não é o mesmo que `[]`: `[]` é a intenção
+// deliberada de esvaziar o conjunto; ausente é bug de cliente, payload truncado
+// ou retry parcial — e tratá-lo como `[]` revogaria tudo em silêncio, que é
+// justamente como se cria uma empresa órfã por acidente.
 public record SetUserCompaniesRequest(IReadOnlyList<Guid>? CompanyIds);
 public record SetCompanyUsersRequest(IReadOnlyList<Guid>? UserIds);
 

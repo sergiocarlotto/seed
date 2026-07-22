@@ -213,6 +213,31 @@ public class UserProvisioningTests(ApiFactory factory) : IClassFixture<ApiFactor
     }
 
     [Fact]
+    public async Task Create_with_too_long_email_is_400()
+    {
+        var manager = await factory.CreateClientWithPermissionsAsync(
+            "prov.longmail@demo.local", AccessControlPermissions.UsersManage);
+
+        // 257 caracteres: um a mais que o varchar(256) de UserName/Email. Sem o
+        // teto no serviço, o INSERT falharia com 22001 (string data right
+        // truncation), que não casa com o filtro de 23505 e viraria 500.
+        const string domain = "@demo.local";
+        var email = new string('a', 257 - domain.Length) + domain;
+        Assert.Equal(257, email.Length);
+
+        var resp = await manager.PostAsJsonAsync("/users", new
+        {
+            fullName = "E-mail Longo", email, password = "Passw0rd!",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+        Assert.False(await db.Users.AnyAsync(u => u.Email == email));
+    }
+
+    [Fact]
     public async Task Create_emits_audit_without_credentials()
     {
         var manager = await factory.CreateClientWithPermissionsAsync(
