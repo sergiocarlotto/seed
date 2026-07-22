@@ -319,4 +319,64 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var resp = await target.GetAsync("/companies");
         Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
     }
+
+    [Fact]
+    public async Task List_company_users_marks_who_has_access()
+    {
+        var owner = await factory.CreateAdminClientAsync();
+        var withAccess = await CreateMemberAsync("acc.list.in@demo.local");
+        await CreateMemberAsync("acc.list.out@demo.local");
+        var companyId = await CreateCompanyAsync("Emp Listagem", grantTo: withAccess);
+
+        var users = await owner.GetFromJsonAsync<List<CompanyUserAccessDto>>($"/companies/{companyId}/users");
+
+        Assert.NotNull(users);
+        var inUser = users!.First(u => u.Email == "acc.list.in@demo.local");
+        var outUser = users.First(u => u.Email == "acc.list.out@demo.local");
+        Assert.True(inUser.HasAccess);
+        Assert.False(outUser.HasAccess);
+    }
+
+    [Fact]
+    public async Task List_company_users_is_404_outside_caller_scope()
+    {
+        var granterId = await CreateMemberAsync("acc.list.granter@demo.local");
+        var outside = await CreateCompanyAsync("Emp Lista Fora");
+        await GivePermissionsAsync(granterId, "Perfil Lista", CompaniesPermissions.GrantAccess);
+
+        var granter = await factory.CreateLoggedInClientAsync(
+            "acc.list.granter@demo.local", ApiFactory.MemberPassword);
+        var resp = await granter.GetAsync($"/companies/{outside}/users");
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Set_company_users_replaces_the_set()
+    {
+        var owner = await factory.CreateAdminClientAsync();
+        var first = await CreateMemberAsync("acc.set.first@demo.local");
+        var second = await CreateMemberAsync("acc.set.second@demo.local");
+        var companyId = await CreateCompanyAsync("Emp Conjunto", grantTo: first);
+
+        var resp = await owner.PutAsJsonAsync($"/companies/{companyId}/users",
+            new { userIds = new[] { second } });
+        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
+
+        Assert.DoesNotContain(companyId, await CompaniesOfAsync(first));
+        Assert.Contains(companyId, await CompaniesOfAsync(second));
+    }
+
+    [Fact]
+    public async Task Set_company_users_requires_grant_access_permission()
+    {
+        var client = await factory.CreateClientWithPermissionsAsync(
+            "acc.set.noperm@demo.local", CompaniesPermissions.Manage);
+        var companyId = await CreateCompanyAsync("Emp Set NoPerm");
+
+        var resp = await client.PutAsJsonAsync($"/companies/{companyId}/users",
+            new { userIds = Array.Empty<Guid>() });
+
+        // companies.manage NÃO habilita conceder acesso — são gates distintos.
+        Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
+    }
 }

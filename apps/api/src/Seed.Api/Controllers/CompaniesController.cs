@@ -9,7 +9,8 @@ namespace Seed.Api.Controllers;
 // (UserCompanyAccess) continua aplicado no serviço — recurso fora do acesso → 404.
 [ApiController]
 [Route("companies")]
-public class CompaniesController(ICompanyService service) : ControllerBase
+public class CompaniesController(
+    ICompanyService service, ICompanyAccessService companyAccess) : ControllerBase
 {
     [HttpGet]
     [RequirePermission(CompaniesPermissions.Access)]
@@ -47,5 +48,29 @@ public class CompaniesController(ICompanyService service) : ControllerBase
     {
         var ok = await service.DeleteAsync(id, ct);
         return ok ? NoContent() : NotFound();
+    }
+
+    // Quem tem acesso a esta empresa. Gate companies.grant_access (não
+    // companies.manage): conceder acesso a dados e manter cadastro são poderes
+    // de natureza diferente. Devolve o mínimo para escolher — id, nome e e-mail.
+    [HttpGet("{id:guid}/users")]
+    [RequirePermission(CompaniesPermissions.GrantAccess)]
+    public async Task<IActionResult> ListUsers(Guid id, CancellationToken ct)
+    {
+        try { return Ok(await companyAccess.ListCompanyUsersAsync(id, ct)); }
+        catch (CompanyAccessNotFoundException) { return NotFound(); }
+    }
+
+    [HttpPut("{id:guid}/users")]
+    [RequirePermission(CompaniesPermissions.GrantAccess)]
+    public async Task<IActionResult> SetUsers(Guid id, SetCompanyUsersRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await companyAccess.SetCompanyUsersAsync(id, req, ct);
+            return NoContent();
+        }
+        catch (CompanyAccessNotFoundException) { return NotFound(); }
+        catch (CompanyAccessConflictException ex) { return Conflict(new { error = ex.Message }); }
     }
 }
