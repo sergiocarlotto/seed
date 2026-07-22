@@ -131,7 +131,10 @@ export default function CompaniesPage() {
                             Editar
                           </Button>
                         )}
-                        {canGrant && (
+                        {/* Mesmo destino de "Editar": para quem administra a
+                            empresa, um botão só basta. "Acessos" existe para
+                            quem só concede acesso e não teria como chegar lá. */}
+                        {canGrant && !isAdmin && (
                           <Button
                             variant="outline"
                             size="sm"
