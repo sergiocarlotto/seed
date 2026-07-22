@@ -68,6 +68,9 @@ public class UsersController(IUserService service, ICompanyAccessService company
 
     // Eixo de empresa: gate próprio (companies.grant_access), distinto de
     // users.manage. O conjunto vale DENTRO do escopo concedível (ADR-0014).
+    // Responde 204: devolver o UserDto entregaria os chips de perfil do usuário
+    // a quem só tem companies.grant_access, o mesmo cadastro que a tela espelho
+    // (GET /companies/{id}/users) nega. O frontend não lê o corpo.
     [HttpPut("{id:guid}/companies")]
     [RequirePermission(CompaniesPermissions.GrantAccess)]
     public async Task<IActionResult> SetCompanies(Guid id, SetUserCompaniesRequest req, CancellationToken ct)
@@ -75,8 +78,7 @@ public class UsersController(IUserService service, ICompanyAccessService company
         try
         {
             await companyAccess.SetUserCompaniesAsync(id, req, ct);
-            var u = await service.GetAsync(id, ct);
-            return u is null ? NotFound() : Ok(u);
+            return NoContent();
         }
         catch (CompanyAccessNotFoundException) { return NotFound(); }
         catch (CompanyAccessConflictException ex) { return Conflict(new { error = ex.Message }); }

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Application.AccessControl;
@@ -119,12 +120,12 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         var grant = await owner.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = new[] { orphanId } });
-        Assert.Equal(HttpStatusCode.OK, grant.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, grant.StatusCode);
         Assert.Contains(orphanId, await CompaniesOfAsync(targetId));
 
         var revoke = await owner.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = Array.Empty<Guid>() });
-        Assert.Equal(HttpStatusCode.OK, revoke.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, revoke.StatusCode);
         Assert.Empty(await CompaniesOfAsync(targetId));
     }
 
@@ -142,7 +143,7 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         // Dentro do escopo: concede.
         var ok = await granter.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = new[] { mine } });
-        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, ok.StatusCode);
 
         // Fora do escopo: 404 (não revela que a empresa existe).
         var denied = await granter.PutAsJsonAsync($"/users/{targetId}/companies",
@@ -166,7 +167,7 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         // Envia só o que enxerga. A concessão fora do escopo NÃO pode sumir.
         var resp = await granter.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = new[] { mine } });
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
 
         var companies = await CompaniesOfAsync(targetId);
         Assert.Contains(mine, companies);
@@ -256,7 +257,7 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         // Ao contrário de status e perfis, o eixo de empresa é editável no owner.
         var resp = await owner.PutAsJsonAsync($"/users/{ownerId}/companies",
             new { companyIds = desired });
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, resp.StatusCode);
         Assert.Contains(companyId, await CompaniesOfAsync(ownerId));
     }
 
@@ -284,9 +285,22 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.NotNull(granted);
         Assert.NotNull(revoked);
         Assert.Equal("User", granted!.EntityType);
-        // Rótulo humano junto do id (ADR-0013, seção 3).
-        Assert.Contains("Emp Auditada", granted.Metadata);
-        Assert.Contains("Emp Auditada", revoked!.Metadata);
+        Assert.Equal("User", revoked!.EntityType);
+
+        // Contrato de vínculo da ADR-0013: chave técnica, rótulo humano e o par
+        // old/new nos dois sentidos. Lê o JSON em vez de casar substring — o
+        // formato do serializador não é contrato, o conteúdo é.
+        using var grantedMeta = JsonDocument.Parse(granted.Metadata!);
+        Assert.Equal(companyId.ToString(), grantedMeta.RootElement.GetProperty("company_id").GetString());
+        Assert.Equal("Emp Auditada", grantedMeta.RootElement.GetProperty("company_name").GetString());
+        Assert.False(grantedMeta.RootElement.GetProperty("old").GetBoolean());
+        Assert.True(grantedMeta.RootElement.GetProperty("new").GetBoolean());
+
+        using var revokedMeta = JsonDocument.Parse(revoked.Metadata!);
+        Assert.Equal(companyId.ToString(), revokedMeta.RootElement.GetProperty("company_id").GetString());
+        Assert.Equal("Emp Auditada", revokedMeta.RootElement.GetProperty("company_name").GetString());
+        Assert.True(revokedMeta.RootElement.GetProperty("old").GetBoolean());
+        Assert.False(revokedMeta.RootElement.GetProperty("new").GetBoolean());
     }
 
     [Fact]

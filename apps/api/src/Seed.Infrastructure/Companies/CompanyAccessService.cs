@@ -29,7 +29,9 @@ public class CompanyAccessService(
 
     // Escopo concedível (ADR-0014): owner alcança toda a organização; os demais,
     // apenas as empresas do próprio acesso. O filtro global de Company já exclui
-    // as soft-deleted, então elas ficam fora do escopo por construção.
+    // as soft-deleted, então elas ficam fora do escopo por construção. A org é
+    // exigida nos DOIS lados do join: a linha de acesso pode, em tese, apontar
+    // para empresa de outro tenant, e o escopo é a trava que não pode ceder.
     private async Task<HashSet<Guid>> GrantableScopeAsync(
         Guid orgId, Guid callerId, bool isOwner, CancellationToken ct)
     {
@@ -40,7 +42,7 @@ public class CompanyAccessService(
         return (await (
             from a in db.UserCompanyAccesses
             join c in db.Companies on a.CompanyId equals c.Id
-            where a.UserId == callerId && a.OrganizationId == orgId
+            where a.UserId == callerId && a.OrganizationId == orgId && c.OrganizationId == orgId
             select c.Id).ToListAsync(ct)).ToHashSet();
     }
 
