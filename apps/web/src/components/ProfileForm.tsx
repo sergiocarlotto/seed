@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
+import { profileSchema, firstError } from "@/lib/form-schemas";
 import { useSetPageHeader } from "@/lib/page-header";
 import { PermissionTree } from "@/components/PermissionTree";
 import { Button } from "@/components/ui/button";
@@ -37,8 +38,15 @@ export function ProfileForm({ mode, groups, profile }: ProfileFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const parsed = profileSchema.safeParse({ name, description });
+    if (!parsed.success) {
+      setError(firstError(parsed.error));
+      return;
+    }
+
     setSaving(true);
-    const body = { name: name.trim(), description: description.trim(), permissionKeys: [...selected] };
+    const body = { ...parsed.data, permissionKeys: [...selected] };
     try {
       if (mode === "create") await api.post("/profiles", body);
       else await api.put(`/profiles/${profile.id}`, body);

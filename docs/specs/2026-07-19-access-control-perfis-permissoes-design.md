@@ -197,6 +197,12 @@ Guardas de invariante retornam 4xx claro (ver Regras de negócio).
 - **Owner:** tem bypass funcional completo, mas continua sujeito ao eixo de
   empresa (`UserCompanyAccess`). É **gerido fora da aplicação** (banco no MVP;
   superadmin externo depois).
+
+  > **Atualizado em 2026-07-22 (ADR-0014):** o owner **deixou de estar sujeito ao
+  > eixo de empresa**. Ele enxerga, edita e exclui todas as empresas da própria
+  > organização, com ou sem `UserCompanyAccess`, e tem escopo concedível total —
+  > é o piso antilockout que destrava uma empresa órfã. O restante deste item
+  > (bypass funcional, gestão fora da aplicação) segue valendo.
 - **Owner é somente-leitura na app:** a gestão de usuários **não pode**
   desativar o owner nem alterar os perfis dele; `is_owner` nunca é setado via
   API. Como o owner é sempre um administrador ativo garantido, ele é o **piso**

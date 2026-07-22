@@ -19,10 +19,11 @@ arquitetura, planos de implementacao ou escolhas de dependencias.
 | [ADR-0007](ADR-0007-local-development-docker-and-deploy.md) | Aceita | Docker Compose (web/api/db/proxy Caddy), same-origin, migrations explicitas, deploy VPS |
 | [ADR-0008](ADR-0008-backend-module-documentation-standard.md) | Aceita | Padrao de documentacao dos modulos backend em `docs/modules/<module>.md` |
 | [ADR-0009](ADR-0009-ai-runtime-claude-code.md) | Aceita | Runtime de IA assistida: Claude Code; skills do projeto em `.claude/skills/` |
-| [ADR-0010](ADR-0010-multi-company-model.md) | Aceita | Modelo multiempresa: Organization (tenant) -> Company (varias por org) -> acesso explicito por usuario |
+| [ADR-0010](ADR-0010-multi-company-model.md) | Aceita (parcialmente substituida pela ADR-0014 e pela ADR-0012) | Modelo multiempresa: Organization (tenant) -> Company (varias por org) -> acesso explicito por usuario (o owner e isento desde a ADR-0014; `orgRole` saiu pela ADR-0012) |
 | [ADR-0011](ADR-0011-ui-design-system-approach.md) | Aceita | UI: shadcn/ui + Tailwind como base interina; design system formal adiado (ADR proprio) |
-| [ADR-0012](ADR-0012-configurable-profiles-and-permissions.md) | Aceita (substitui parcialmente a ADR-0006) | Perfis configuraveis com permissoes por organizacao, substituindo os papeis fixos da ADR-0006 (modulo `AccessControl`) |
+| [ADR-0012](ADR-0012-configurable-profiles-and-permissions.md) | Aceita (parcialmente substituida pela ADR-0014; substitui parcialmente a ADR-0006) | Perfis configuraveis com permissoes por organizacao, substituindo os papeis fixos da ADR-0006 (modulo `AccessControl`) |
 | [ADR-0013](ADR-0013-audit-event-standard.md) | Aceita | Padrao do `AuditEvent`: taxonomia `<modulo>.<entidade>.<verbo>`, contrato `old`/`new` no `metadata`, emissao atomica e retencao indefinida no MVP |
+| [ADR-0014](ADR-0014-company-access-grant-scope.md) | Aceita | Escopo de concessao de acesso a empresa: postura A no eixo de empresa (so concede o que acessa), owner isento |
 
 ## Decisoes Pendentes
 

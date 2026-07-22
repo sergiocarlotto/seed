@@ -3,7 +3,7 @@
 Este documento registra o estado das ferramentas na maquina de desenvolvimento,
 como rodar o projeto e onde o trabalho parou, para facilitar a retomada.
 
-Ultima atualizacao: 2026-07-21.
+Ultima atualizacao: 2026-07-22.
 
 ## Status das ferramentas
 
@@ -111,6 +111,34 @@ dotnet run --project apps/api/src/Seed.Api    # backend no host
 npm --prefix apps/web run dev                 # frontend no host
 ```
 
+### Rodar a partir de um worktree (`.worktrees/<branch>`)
+
+Trabalhando num git worktree, tres detalhes custam tempo se nao estiverem
+escritos:
+
+- **O `.env` nao existe no worktree** (nao e versionado). Aponte o compose para o
+  `.env` do repositorio principal, senao os containers sao **recriados com senha
+  vazia** e a API morre com `28P01`:
+
+  ```powershell
+  docker compose --env-file C:\Users\sergi\pessoal\seed\.env up -d db api
+  ```
+
+- **Nao suba o servico `web` do compose**: ele disputa a porta 3000 com o
+  `next dev` que o Playwright levanta. Suba so `db` e `api` (`docker compose
+  ... up -d db api`) ou pare o `web` (`docker compose stop web`).
+
+- **Container de API velho responde 405 a endpoint novo.** Se a imagem em
+  execucao foi construida a partir da `main`, a rota nova simplesmente nao existe
+  nela: o ASP.NET casa o path (`/users/{id}/...`) mas nao o verbo, e devolve
+  **405 Method Not Allowed** — que parece bug de roteamento e nao container
+  obsoleto. Rebuilde a API a partir do worktree antes de investigar qualquer
+  outra coisa:
+
+  ```powershell
+  docker compose --env-file C:\Users\sergi\pessoal\seed\.env up -d --build api
+  ```
+
 ### Prod-like
 
 ```powershell
@@ -147,23 +175,35 @@ empresa restrito ao acesso e seed de dev (org Demo + admin + empresa). Frontend
 com shadcn/ui: login e CRUD de empresa. Sem auto-cadastro (organizacoes sao
 provisionadas por nos; super-admin no futuro).
 
+Desde 2026-07-22 o modulo tambem **concede e revoga o acesso de usuarios as
+empresas** (`companies.grant_access`), nas duas direcoes — pela tela do usuario
+(`PUT /users/{id}/companies`) e pela tela da empresa
+(`GET`/`PUT /companies/{id}/users`) —, com o **escopo concedivel** da ADR-0014:
+o nao-owner so concede o que ja acessa; o owner alcanca a organizacao inteira.
+
 Nota: os papeis fixos `Admin`/`Member` deste modulo **foram removidos** pela
 ADR-0012 — ver abaixo.
 
-Doc do modulo: `docs/modules/organizations.md`. Design/plano: ADR-0010, ADR-0011.
+Doc do modulo: `docs/modules/organizations.md`. Design/plano: ADR-0010, ADR-0011,
+ADR-0014 (escopo de concessao).
 
 ### `access-control` — perfis e permissoes (2026-07-21)
 
 Perfis configuraveis por organizacao no lugar dos papeis fixos (ADR-0012):
 catalogo de permissoes declarado no codigo e reconciliado no boot, perfis por
 org, atribuicao a usuarios, permissao efetiva por request e enforcement por
-`[RequirePermission]`. O dono da organizacao (`is_owner`) tem bypass funcional e
-e somente-leitura na aplicacao. Frontend: telas de Perfis e Usuarios.
+`[RequirePermission]`. Desde 2026-07-22 tambem **cria usuarios** na organizacao
+(`POST /users`, com senha inicial definida pelo administrador; nao ha convite por
+email). O dono da organizacao (`is_owner`) tem bypass funcional e, desde a
+ADR-0014, tambem no **eixo de empresa** dentro da propria organizacao; segue
+somente-leitura na aplicacao quanto a status e perfis (suas empresas sao
+editaveis). Frontend: telas de Perfis e Usuarios.
 
-Verificado: 48 testes backend (Postgres real), 27 unit no frontend, 12 e2e.
+Verificado: 1 unit + 79 testes de integracao no backend (Postgres real), 27 unit
+no frontend, 13 e2e.
 
 Doc do modulo: `docs/modules/access-control.md`. Decisoes: ADR-0012 (perfis),
-ADR-0013 (padrao do `AuditEvent`).
+ADR-0013 (padrao do `AuditEvent`), ADR-0014 (bypass do owner no eixo de empresa).
 
 ### Como experimentar
 
@@ -198,7 +238,17 @@ Rodam no host (o SAC nao bloqueia):
 npm --prefix apps/web run test    # vitest
 npm --prefix apps/web run lint
 npm --prefix apps/web run build
-npm --prefix apps/web run e2e     # Playwright; exige a API de pe (docker compose up -d db api)
+```
+
+O Playwright, ao contrario dos demais, **precisa ser invocado de dentro de
+`apps/web`** — com `--prefix` o `playwright.config.ts` nao e resolvido a partir
+do diretorio do projeto e o `baseURL` (`http://localhost:3000`) nao e aplicado,
+fazendo as navegacoes relativas falharem:
+
+```powershell
+cd apps/web
+npx playwright test          # exige a API de pe (docker compose up -d db api)
+# npm run e2e (de dentro de apps/web) e equivalente; o que nao funciona e o --prefix
 ```
 
 O Playwright sobe o `next dev` sozinho, mas **nao** sobe a API: deixe `db` e `api`

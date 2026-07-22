@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
+import { loginSchema, firstError } from "@/lib/form-schemas";
 import type { User } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +20,16 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      setError(firstError(parsed.error));
+      return;
+    }
+
     setLoading(true);
     try {
-      await api.post<{ user: User }>("/auth/login", { email, password });
+      await api.post<{ user: User }>("/auth/login", parsed.data);
       router.push("/companies");
       router.refresh();
     } catch (err) {

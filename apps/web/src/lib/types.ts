@@ -52,3 +52,13 @@ export type UserRow = {
   profiles: EntityRef[];
   companies: EntityRef[];
 };
+
+export type CompanyUserAccess = {
+  id: string;
+  fullName: string;
+  email: string;
+  /** Concessão explícita (linha de acesso), não o acesso efetivo. */
+  hasAccess: boolean;
+  /** O owner alcança toda empresa da organização sem concessão (ADR-0014). */
+  isOwner: boolean;
+};

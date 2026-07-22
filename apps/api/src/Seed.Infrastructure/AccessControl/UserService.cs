@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Seed.Application.Abstractions;
@@ -5,6 +6,7 @@ using Seed.Application.AccessControl;
 using Seed.Application.Audit;
 using Seed.Domain.AccessControl;
 using Seed.Domain.Organizations;
+using Seed.Infrastructure.Identity;
 using Seed.Infrastructure.Persistence;
 
 namespace Seed.Infrastructure.AccessControl;
@@ -12,9 +14,27 @@ namespace Seed.Infrastructure.AccessControl;
 // Gestão de usuários da organização da sessão. Consistente com ProfileService:
 // DbContext direto, tenancy resolvida pelo usuário atual, auditoria na mesma UoW.
 public class UserService(
-    SeedDbContext db, ICurrentUser currentUser, IAuditLog audit) : IUserService
+    SeedDbContext db, ICurrentUser currentUser, IAuditLog audit,
+    UserManager<ApplicationUser> users) : IUserService
 {
     private const string EntityType = "User";
+
+    // Resposta única para qualquer colisão de e-mail, venha ela do validador do
+    // Identity ou do índice único sob corrida. Precisa ser a MESMA nos dois
+    // caminhos: divergir aqui transforma a criação num oráculo capaz de
+    // distinguir "conta existe em outra organização" de "e-mail livre".
+    public const string DuplicateEmailMessage = "Não foi possível usar este e-mail.";
+
+    // Mesmo limite de Profile.Name, Organization.Name e Company.Name. Aplicado no
+    // serviço porque a coluna FullName ainda é text sem HasMaxLength — apertar o
+    // esquema é decisão própria, com migration. Sem isso, um nome arbitrariamente
+    // longo entraria por request e seria copiado para AuditEvents, append-only.
+    private const int FullNameMaxLength = 200;
+
+    // Teto das colunas UserName/Email do Identity (varchar(256)). Sem a checagem
+    // aqui, um e-mail maior chega ao INSERT e o Postgres devolve 22001, que não
+    // casa com o filtro de 23505 abaixo e escapa como 500 em vez de 400.
+    private const int EmailMaxLength = 256;
 
     // Contexto do chamador: organização + se é owner (define quem mexe em is_system).
     private async Task<(Guid OrgId, bool IsOwner)> CallerAsync(CancellationToken ct)
@@ -39,6 +59,91 @@ public class UserService(
         var list = await BuildAsync(orgId, onlyUserId: id, ct);
         return list.Count == 0 ? null : list[0];
     }
+
+    public async Task<UserDto> CreateAsync(CreateUserRequest req, CancellationToken ct)
+    {
+        var (orgId, _) = await CallerAsync(ct);
+
+        var fullName = (req.FullName ?? "").Trim();
+        var email = (req.Email ?? "").Trim();
+        if (fullName.Length == 0) throw new UserValidationException("Nome obrigatório.");
+        if (fullName.Length > FullNameMaxLength)
+            throw new UserValidationException(
+                $"Nome deve ter no máximo {FullNameMaxLength} caracteres.");
+        if (email.Length == 0) throw new UserValidationException("E-mail obrigatório.");
+        if (email.Length > EmailMaxLength)
+            throw new UserValidationException(
+                $"E-mail deve ter no máximo {EmailMaxLength} caracteres.");
+
+        // Transação explícita porque UserManager.CreateAsync chama SaveChanges por
+        // conta própria. Sem ela, auditar antes deixaria o evento pendurado no
+        // change tracker se a criação falhasse (evento de algo que não aconteceu,
+        // proibido pela ADR-0013), e auditar depois permitiria usuário sem evento.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,     // sem e-mail transacional não há confirmação
+            FullName = fullName,
+            OrganizationId = orgId,    // sempre do chamador, nunca do request
+            IsOwner = false,           // owner é gerido fora da aplicação (ADR-0012)
+            Status = UserStatus.Active,
+        };
+
+        // UserManager.CreateAsync não tem sobrecarga com CancellationToken; o ct
+        // segue honrado nas leituras e no SaveChanges em volta.
+        IdentityResult result;
+        try
+        {
+            result = await users.CreateAsync(user, req.Password ?? "");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            // O UserValidator detecta duplicidade com um SELECT prévio que não é
+            // atômico com o INSERT: sob concorrência as duas requisições passam a
+            // checagem e a segunda só colide no índice único (UserNameIndex),
+            // como exceção. Traduz para a mesma resposta do caminho serial em vez
+            // de deixar vazar como 500.
+            throw new UserValidationException(DuplicateEmailMessage);
+        }
+
+        if (!result.Succeeded)
+        {
+            // E-mail é único globalmente. Mensagem neutra para não revelar que a
+            // conta existe em OUTRA organização (ver spec, "Riscos aceitos").
+            var duplicate = result.Errors.Any(e =>
+                e.Code is "DuplicateUserName" or "DuplicateEmail");
+            throw new UserValidationException(duplicate
+                ? DuplicateEmailMessage
+                : string.Join(" ", result.Errors.Select(Translate).Distinct()));
+        }
+
+        audit.Record(orgId, "access_control.user.created", EntityType, user.Id.ToString(),
+            new { full_name = fullName, email });
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        // Montado em memória: o usuário nasce sem perfil e sem empresa, então o
+        // conteúdo é determinístico. Evita reler o banco com a transação já
+        // encerrada e o list[0] sem guarda.
+        return new UserDto(user.Id, fullName, email, UserStatus.Active.ToString(), false, [], []);
+    }
+
+    // Mensagens do Identity vêm em inglês e a de InvalidEmail ecoa o input do
+    // chamador; por isso a descrição original nunca é devolvida. Fallback
+    // genérico para todo código não mapeado.
+    private static string Translate(IdentityError e) => e.Code switch
+    {
+        "PasswordTooShort" => "A senha deve ter ao menos 8 caracteres.",
+        "PasswordRequiresDigit" => "A senha deve conter ao menos um número.",
+        "PasswordRequiresUpper" => "A senha deve conter ao menos uma letra maiúscula.",
+        "PasswordRequiresLower" => "A senha deve conter ao menos uma letra minúscula.",
+        "PasswordRequiresNonAlphanumeric" => "A senha deve conter ao menos um símbolo.",
+        "InvalidEmail" or "InvalidUserName" => "E-mail inválido.",
+        _ => "Não foi possível criar o usuário.",
+    };
 
     public async Task<UserDto?> SetStatusAsync(Guid id, UpdateUserStatusRequest req, CancellationToken ct)
     {

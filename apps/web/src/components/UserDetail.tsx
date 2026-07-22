@@ -8,18 +8,30 @@ import { useSession } from "@/lib/session";
 import { can } from "@/lib/access";
 import { useSetPageHeader } from "@/lib/page-header";
 import { UserProfilesForm } from "@/components/UserProfilesForm";
+import { UserCompaniesForm } from "@/components/UserCompaniesForm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { UserRow, ProfileSummary } from "@/lib/types";
+import type { UserRow, ProfileSummary, Company } from "@/lib/types";
 
 /**
- * Detalhe do usuário: status (switch), perfis (checklist) e empresas (leitura).
- * Owner é somente leitura. O switch exige `users.manage`; a edição de perfis é
- * governada pelo `UserProfilesForm`.
+ * Detalhe do usuário: status (switch), perfis (checklist) e empresas
+ * (checklist). Owner é somente leitura para status e perfis, e no eixo de
+ * empresa ele já alcança a organização inteira por bypass (ADR-0014), então o
+ * checklist dá lugar a um aviso. O switch exige `users.manage`; a edição de
+ * perfis é governada pelo `UserProfilesForm`, e a de empresas pelo
+ * `UserCompaniesForm`.
  */
-export function UserDetail({ user, allProfiles }: { user: UserRow; allProfiles: ProfileSummary[] | null }) {
+export function UserDetail({
+  user,
+  allProfiles,
+  grantableCompanies,
+}: {
+  user: UserRow;
+  allProfiles: ProfileSummary[] | null;
+  grantableCompanies: Company[] | null;
+}) {
   useSetPageHeader({ title: user.fullName, breadcrumb: ["Administração", "Usuários", user.fullName] });
   const me = useSession();
   const router = useRouter();
@@ -108,19 +120,13 @@ export function UserDetail({ user, allProfiles }: { user: UserRow; allProfiles: 
         <CardHeader>
           <CardTitle className="text-base">Empresas acessíveis</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {user.companies.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma empresa.</p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {user.companies.map((c) => (
-                <Badge key={c.id}>{c.name}</Badge>
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">
-            A concessão de acesso a empresas é gerida no módulo de Empresas.
-          </p>
+        <CardContent>
+          <UserCompaniesForm
+            userId={user.id}
+            targetIsOwner={user.isOwner}
+            currentCompanies={user.companies}
+            grantableCompanies={grantableCompanies}
+          />
         </CardContent>
       </Card>
     </div>

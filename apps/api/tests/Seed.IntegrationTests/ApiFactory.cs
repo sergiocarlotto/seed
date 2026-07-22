@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Seed.Domain.Access;
+using Seed.Domain.AccessControl;
 using Seed.Domain.Companies;
 using Seed.Domain.Organizations;
 using Seed.Infrastructure.Identity;
@@ -23,6 +24,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public const string AdminPassword = "Admin123!";
     public const string DemoCompanyName = "Empresa Demo";
     public const string DemoOrgName = "Demo";
+    // Senha padrão dos usuários comuns criados pelos helpers (atende a política).
+    public const string MemberPassword = "Passw0rd!";
 
     private readonly PostgreSqlContainer _db = new PostgreSqlBuilder("postgres:17-alpine")
         .Build();
@@ -89,6 +92,33 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         if (!result.Succeeded)
             throw new InvalidOperationException(
                 $"Falha ao criar usuário {email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+    }
+
+    // Client logado como um usuário comum da org Demo que recebe as permissões
+    // dadas por um perfil ativo próprio. Atalho para os testes que precisam de um
+    // gestor com um recorte específico de permissões.
+    public async Task<HttpClient> CreateClientWithPermissionsAsync(
+        string email, params string[] permissionKeys)
+    {
+        var orgId = await GetDemoOrganizationIdAsync();
+        await CreateUserAsync(email, MemberPassword, orgId);
+        using (var scope = Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+            var userId = await db.Users.Where(u => u.Email == email).Select(u => u.Id).FirstAsync();
+            var now = DateTime.UtcNow;
+            var profile = new Profile
+            {
+                OrganizationId = orgId, Name = $"Perfil {email}", Status = ProfileStatus.Active,
+                CreatedAt = now, UpdatedAt = now,
+            };
+            db.Profiles.Add(profile);
+            foreach (var key in permissionKeys)
+                db.ProfilePermissions.Add(new ProfilePermission { ProfileId = profile.Id, PermissionKey = key });
+            db.UserProfiles.Add(new UserProfile { UserId = userId, ProfileId = profile.Id });
+            await db.SaveChangesAsync();
+        }
+        return await CreateLoggedInClientAsync(email, MemberPassword);
     }
 
     // Dados de uma segunda organização (tenant) criada para testes cross-tenant.

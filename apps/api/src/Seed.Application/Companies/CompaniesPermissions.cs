@@ -14,6 +14,7 @@ public static class CompaniesPermissions
 
     public const string Access = "companies.access";
     public const string Manage = "companies.manage";
+    public const string GrantAccess = "companies.grant_access";
 
     public static readonly IReadOnlyList<PermissionDefinition> Definitions =
     [
@@ -21,5 +22,7 @@ public static class CompaniesPermissions
             "Ver e acessar a funcionalidade de empresas."),
         new(Manage, Module, "Gerir empresas",
             "Criar, editar e excluir empresas."),
+        new(GrantAccess, Module, "Conceder acesso a empresas",
+            "Conceder e revogar o acesso de usuários às empresas."),
     ];
 }

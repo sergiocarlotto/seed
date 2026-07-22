@@ -17,6 +17,6 @@ public static class AccessControlPermissions
         new(ProfilesAssign, Module, "Atribuir perfis",
             "Atribuir e remover perfis dos usuários."),
         new(UsersManage, Module, "Gerir usuários",
-            "Listar, ativar e desativar usuários."),
+            "Criar, listar, ativar e desativar usuários."),
     ];
 }

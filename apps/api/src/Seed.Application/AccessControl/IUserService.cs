@@ -20,6 +20,9 @@ public interface IUserService
 {
     Task<IReadOnlyList<UserDto>> ListAsync(CancellationToken ct);
     Task<UserDto?> GetAsync(Guid id, CancellationToken ct);
+    // Cria um usuário na organização do chamador. Nasce Active, sem perfis e sem
+    // empresas — permissão efetiva vazia até ser configurado.
+    Task<UserDto> CreateAsync(CreateUserRequest req, CancellationToken ct);
     // Ativa/desativa (soft). Recusa o owner. Retorna null se o usuário não é da org.
     Task<UserDto?> SetStatusAsync(Guid id, UpdateUserStatusRequest req, CancellationToken ct);
     // Define o CONJUNTO de perfis do usuário. Retorna null se o usuário não é da org.

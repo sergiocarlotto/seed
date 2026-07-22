@@ -12,7 +12,9 @@ O modulo responde por dois eixos independentes de autorizacao:
 - **funcional** (este modulo): a permissao vem dos perfis do usuario;
 - **empresa** (modulo `organizations`): o acesso vem de `UserCompanyAccess`.
 
-Ter a permissao funcional **nao** dispensa o acesso a empresa, e vice-versa.
+Ter a permissao funcional **nao** dispensa o acesso a empresa, e vice-versa — com
+a unica excecao do **owner**, que desde a ADR-0014 tambem tem bypass no eixo de
+empresa, dentro da propria organizacao.
 
 Modelo detalhado: ADR-0012 e
 `docs/specs/2026-07-19-access-control-perfis-permissoes-design.md`.
@@ -22,6 +24,8 @@ Modelo detalhado: ADR-0012 e
 - Catalogo de permissoes declarado no codigo e reconciliado no banco no boot.
 - CRUD de perfis (`Profile`) por organizacao, com o conjunto de permissoes de cada um.
 - Atribuicao de perfis a usuarios.
+- Criacao de usuario na organizacao, com **senha inicial definida pelo
+  administrador** (nao ha convite por email).
 - Listagem, consulta e ativacao/desativacao de usuarios da organizacao.
 - Resolucao da **permissao efetiva** do usuario da sessao e enforcement por
   `[RequirePermission]` nos endpoints.
@@ -32,7 +36,13 @@ Modelo detalhado: ADR-0012 e
 
 - **Criar, remover ou editar owner** (`is_owner`): e gerido fora da aplicacao
   (banco no MVP; superadmin externo no futuro). Nenhum endpoint o altera.
-- Convite e cadastro de novos usuarios (dependem de email transacional).
+- Convite por email e recuperacao de senha (dependem de email transacional). A
+  **criacao direta** de usuario, com senha inicial definida pelo administrador,
+  **esta no escopo** e ja e suportada.
+- Troca obrigatoria de senha no primeiro login: nao existe flag, tela nem gate de
+  navegacao. Consequencia assumida (quem cria a conta retem uma credencial valida
+  da outra pessoa) descrita em
+  `docs/specs/2026-07-21-user-provisioning-company-access-design.md`.
 - Conceder/revogar acesso a **empresas** (é do modulo `organizations`).
 - Permissoes por campo, por registro ou por empresa (fora do MVP).
 - UI de consulta dos eventos de auditoria.
@@ -58,6 +68,7 @@ Modelo detalhado: ADR-0012 e
 
 - Listar o catalogo de permissoes ativas agrupado por modulo (`GET /permissions`).
 - Listar, ver, criar, editar e arquivar perfis (`/profiles`).
+- Criar usuario na organizacao (`POST /users`).
 - Listar e ver usuarios da organizacao (`/users`).
 - Ativar/desativar usuario (`PATCH /users/{id}/status`).
 - Definir o conjunto de perfis de um usuario (`PUT /users/{id}/profiles`).
@@ -68,8 +79,10 @@ Modelo detalhado: ADR-0012 e
 
 - **Permissao efetiva** = uniao das permissoes `Active` dos perfis `Active`
   vinculados ao usuario. Sem perfil → nenhuma permissao funcional.
-- **Owner** (`is_owner`) tem bypass funcional total (todas as permissoes ativas),
-  mas continua sujeito ao eixo de empresa.
+- **Owner** (`is_owner`) tem bypass funcional total (todas as permissoes ativas).
+  Desde a ADR-0014 ele tambem tem bypass no **eixo de empresa**, limitado a
+  propria organizacao — a frase da ADR-0012 de que "continua sujeito ao eixo de
+  empresa" vale hoje apenas para os **demais** usuarios.
 - **Usuario `Inactive`** tem permissao efetiva **vazia**, independente de perfis
   ou de ser owner.
 - **Revogacao imediata:** a permissao e resolvida por request (memoizada apenas
@@ -82,6 +95,18 @@ Modelo detalhado: ADR-0012 e
   perfis alterados por endpoint. E o piso que evita "organizacao trancada por fora".
 - **Nome de perfil unico por organizacao**; a corrida no indice unico (23505) e
   traduzida para erro de validacao, nao 500.
+- **Usuario criado nasce `Active`, sem perfis e sem empresas:** sua permissao
+  efetiva e **vazia** e ele nao alcanca empresa alguma ate ser configurado por
+  `PUT /users/{id}/profiles` e `PUT /users/{id}/companies`, cada um com o seu
+  proprio gate. Criar, por si so, nao e caminho de escalada.
+- **Campos sensiveis nao vem do cliente:** `organizationId` (sempre o do caller),
+  `isOwner` (`false`), `status` (`Active`) e `emailConfirmed` (`true`) sao fixados
+  no servidor e nem existem no DTO de entrada. A senha e validada pela politica do
+  Identity (minimo de 8 caracteres, com maiuscula, minuscula, digito e simbolo);
+  o modulo nao reimplementa essa validacao.
+- **Email e unico globalmente** (`RequireUniqueEmail`, consequencia do login por
+  email sem selecao de tenant). Colisao responde **400 com mensagem neutra**, sem
+  revelar organizacao, status nem que a conta existe em outro tenant.
 - **Permissao obsoleta** nao pode ser concedida e e ignorada na resolucao.
 - O catalogo e **reconciliado no boot**: chave declarada some do codigo →
   `Obsolete`; reaparece → `Active`. Idempotente.
@@ -90,10 +115,13 @@ Modelo detalhado: ADR-0012 e
 
 - Permissoes declaradas por este modulo: `profiles.manage` (criar/editar/arquivar
   perfis e definir suas permissoes), `profiles.assign` (atribuir perfis a
-  usuarios), `users.manage` (listar, ativar e desativar usuarios).
+  usuarios), `users.manage` (criar, listar, ativar e desativar usuarios).
 - Gates por endpoint: `/permissions` e `/profiles` exigem `profiles.manage`;
-  `/users` (listar, ver, status) exige `users.manage`; `PUT /users/{id}/profiles`
-  exige `profiles.assign`.
+  `/users` (criar, listar, ver, status) exige `users.manage`;
+  `PUT /users/{id}/profiles` exige `profiles.assign`.
+- Excecao na mesma rota: `PUT /users/{id}/companies` mora sob `/users`, mas e do
+  eixo de empresa — o gate e `companies.grant_access`, declarado pelo modulo
+  `organizations` (ADR-0014).
 - Enforcement por `[RequirePermission]` (policy provider dinamico) **no backend**;
   o frontend nunca e barreira, apenas espelho de UX.
 - Tenancy: a organizacao vem sempre do usuario da sessao, nunca do request.
@@ -105,7 +133,9 @@ Modelo detalhado: ADR-0012 e
 ## Criterios de Aceite
 
 Status: **atendidos** (implementado e verificado em 2026-07-20 na branch
-`feat/access-control`; 48 testes verdes e e2e 12/12).
+`feat/access-control`; 48 testes verdes e e2e 12/12). Os itens de **criacao de
+usuario** foram acrescentados e verificados em 2026-07-22 na branch
+`feat/user-provisioning` (1 unit + 79 de integracao no backend, e2e 13/13).
 
 - [x] Catalogo reconciliado no boot; chave sumida vira `Obsolete` e reaparecida volta a `Active`.
 - [x] FK barra `permission_key` inexistente em `ProfilePermission`.
@@ -121,6 +151,14 @@ Status: **atendidos** (implementado e verificado em 2026-07-20 na branch
 - [x] Data migration: org com varios admins → exatamente **um** `is_owner`, todos
       os ex-admins vinculados ao "Administrador", member sem perfil.
 - [x] Dois eixos: ter a permissao funcional sem `UserCompanyAccess` nao da acesso a empresa.
+- [x] `POST /users` cria o usuario na organizacao do caller; sem `users.manage` = 403, sem sessao = 401.
+- [x] Usuario criado nasce `Active`, sem perfis e sem empresas, com permissao efetiva
+      vazia, e consegue autenticar.
+- [x] `organizationId` vem sempre do caller, mesmo que o JSON traga campos extras
+      (anti mass-assignment).
+- [x] Email duplicado = 400 com mensagem neutra; senha fora da politica do Identity = 400.
+- [x] `access_control.user.created` emitido na mesma unidade de trabalho da criacao,
+      com o `actor_user_id` correto e sem credencial no `metadata`.
 
 ## Eventos de Auditoria
 
@@ -130,6 +168,9 @@ Emitidos na mesma unidade de trabalho da alteracao (ADR-0005):
 - `access_control.profile.updated` (por campo alterado: `field`, `old`, `new`)
 - `access_control.profile.archived`
 - `access_control.profile.permission_granted` / `...permission_revoked`
+- `access_control.user.created` (forma de criacao da ADR-0013: `full_name` e
+  `email`, sem `old`/`new` e **sem nada derivado da credencial**; emitido dentro
+  da mesma transacao explicita que cria o usuario)
 - `access_control.user.status_changed`
 - `access_control.user.profile_assigned` / `...profile_removed`
 
@@ -153,8 +194,11 @@ O contrato `old`/`new` usado aqui e a referencia para a padronizacao formal do
   obsoleto, soft delete, owner, desativado); enforcement 401/403 por endpoint;
   CRUD de perfis e invariantes de `is_system`; gestao de usuarios (status,
   atribuicao de perfis, postura B, owner protegido); cross-tenant 404; data
-  migration do `orgRole`.
-- E2E (Playwright): telas de perfis e usuarios sobre a stack real.
+  migration do `orgRole`; criacao de usuario (campos fixados no servidor, email
+  duplicado, senha fraca, permissao efetiva vazia, login do usuario criado e
+  emissao do evento sem credencial).
+- E2E (Playwright): telas de perfis e usuarios sobre a stack real, incluindo
+  criar um usuario e conceder-lhe a primeira empresa.
 
 ## Decisoes Relacionadas
 
@@ -164,3 +208,5 @@ O contrato `old`/`new` usado aqui e a referencia para a padronizacao formal do
 - ADR-0010 (multiempresa) — origem do eixo de empresa e do estado migrado.
 - Design backend: `docs/specs/2026-07-19-access-control-perfis-permissoes-design.md`.
 - Design frontend: `docs/specs/2026-07-20-access-control-frontend-perfis-usuarios-design.md`.
+- Design do provisionamento de usuarios:
+  `docs/specs/2026-07-21-user-provisioning-company-access-design.md`.

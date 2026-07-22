@@ -94,6 +94,9 @@ framework.
 - shadcn/ui pode ser introduzido como a fundacao de componentes reutilizaveis.
 - Zod deve ser usado para validacao e contratos de dados quando formularios ou
   fronteiras de API aparecerem.
+  Status: aplicado em `apps/web` em 2026-07-21 (schemas em
+  `src/lib/form-schemas.ts`, cobrindo login, empresa, perfil e usuario).
+  Checklists de ids ficam de fora por nao terem entrada livre.
 - Playwright deve ser usado para validar fluxos importantes de usuario em um
   navegador real.
 
