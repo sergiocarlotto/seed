@@ -108,6 +108,9 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
             new { companyIds = new[] { companyId } });
 
         Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
+        // O 403 sozinho não prova que o gate barrou ANTES da escrita: uma
+        // implementação que gravasse e só então recusasse passaria igual.
+        Assert.DoesNotContain(companyId, await CompaniesOfAsync(targetId));
     }
 
     [Fact]
@@ -149,6 +152,11 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var denied = await granter.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = new[] { mine, outside } });
         Assert.Equal(HttpStatusCode.NotFound, denied.StatusCode);
+
+        // O payload misto é o caso perigoso: a recusa tem que ser do conjunto
+        // inteiro. Uma implementação que gravasse `mine`, chegasse em `outside`
+        // e só então lançasse devolveria o mesmo 404 com escrita parcial feita.
+        Assert.DoesNotContain(outside, await CompaniesOfAsync(targetId));
     }
 
     [Fact]
@@ -196,10 +204,16 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
             new { companyIds = Array.Empty<Guid>() });
         Assert.Equal(HttpStatusCode.NotFound, badTarget.StatusCode);
 
+        // Lista vazia significa "esvazie o conjunto": se o 404 viesse depois da
+        // escrita, o acesso que o segundo tenant recebeu no bootstrap teria sido
+        // revogado por um chamador de outra organização.
+        Assert.Contains(other.CompanyId, await CompaniesOfAsync(foreignUserId));
+
         // Empresa de outra organização no payload.
         var badCompany = await owner.PutAsJsonAsync($"/users/{localTarget}/companies",
             new { companyIds = new[] { other.CompanyId } });
         Assert.Equal(HttpStatusCode.NotFound, badCompany.StatusCode);
+        Assert.Empty(await CompaniesOfAsync(localTarget));
     }
 
     [Fact]
@@ -312,8 +326,14 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var targetId = await CreateMemberAsync("acc.twoaxis@demo.local");
         var companyId = await CreateCompanyAsync("Emp Dois Eixos");
 
-        await owner.PutAsJsonAsync($"/users/{targetId}/companies",
+        var grant = await owner.PutAsJsonAsync($"/users/{targetId}/companies",
             new { companyIds = new[] { companyId } });
+        Assert.Equal(HttpStatusCode.NoContent, grant.StatusCode);
+
+        // A concessão precisa EXISTIR para o teste demonstrar algo: sem ela o
+        // 403 abaixo se explicaria só pela ausência de perfil, e a independência
+        // dos dois eixos ficaria sem prova.
+        Assert.Contains(companyId, await CompaniesOfAsync(targetId));
 
         var target = await factory.CreateLoggedInClientAsync("acc.twoaxis@demo.local", ApiFactory.MemberPassword);
         var resp = await target.GetAsync("/companies");
@@ -335,6 +355,50 @@ public class CompanyAccessTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var outUser = users.First(u => u.Email == "acc.list.out@demo.local");
         Assert.True(inUser.HasAccess);
         Assert.False(outUser.HasAccess);
+
+        // O owner não depende de linha de acesso (ADR-0014, regra 3). HasAccess
+        // continua sendo só a concessão explícita — é o que a tela grava e o que
+        // a auditoria registra —, e IsOwner é o que permite exibir o acesso
+        // efetivo sem inventar uma concessão que não existe.
+        var ownerRow = users.First(u => u.Email == ApiFactory.AdminEmail);
+        Assert.True(ownerRow.IsOwner);
+        Assert.False(ownerRow.HasAccess);
+        Assert.False(inUser.IsOwner);
+    }
+
+    [Fact]
+    public async Task List_company_users_never_leaves_the_organization()
+    {
+        // Este endpoint devolve nome completo e e-mail de todo mundo. Sem o
+        // recorte por organização ele vira uma lista telefônica cross-tenant —
+        // e sem esta asserção o recorte podia sumir do serviço sem nenhum teste
+        // reclamar.
+        var owner = await factory.CreateAdminClientAsync();
+        var member = await CreateMemberAsync("acc.boundary.member@demo.local");
+        var companyId = await CreateCompanyAsync("Emp Fronteira", grantTo: member);
+        await factory.CreateSecondTenantAsync(
+            orgName: "Org Fronteira", companyName: "Emp Fronteira Outra",
+            userEmail: "boundary@other.local", userPassword: "Bound123!");
+
+        var users = await owner.GetFromJsonAsync<List<CompanyUserAccessDto>>($"/companies/{companyId}/users");
+        Assert.NotNull(users);
+
+        Assert.DoesNotContain(users!, u => u.Email == "boundary@other.local");
+
+        // Conjunto EXATO: os usuários da org Demo, nem um a mais nem um a menos.
+        // Pega tanto o vazamento de outro tenant quanto uma linha fabricada que
+        // não corresponda a usuário nenhum. Os testes de uma mesma classe rodam
+        // em sequência no xUnit, então o conjunto é determinístico aqui.
+        var orgId = await factory.GetDemoOrganizationIdAsync();
+        List<Guid> expected;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+            expected = await db.Users.Where(u => u.OrganizationId == orgId)
+                .Select(u => u.Id).ToListAsync();
+        }
+
+        Assert.Equal(expected.OrderBy(x => x), users!.Select(u => u.Id).OrderBy(x => x));
     }
 
     [Fact]

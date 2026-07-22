@@ -44,19 +44,69 @@ public class UserProvisioningTests(ApiFactory factory) : IClassFixture<ApiFactor
         Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
         var created = await resp.Content.ReadFromJsonAsync<UserDto>();
         Assert.NotNull(created);
-        Assert.Equal("Maria Silva", created!.FullName);
-        Assert.Equal(UserStatus.Active.ToString(), created.Status);
-        Assert.False(created.IsOwner);
-        Assert.Empty(created.Profiles);
-        Assert.Empty(created.Companies);
 
-        // A conta nasce inócua: loga, mas /auth/me não traz permissão nem empresa.
+        // O corpo do 201 é montado em memória com literais: asserir nele só
+        // repetiria a implementação. As garantias valem contra o que FICOU no
+        // banco, que é o que a próxima requisição vai ler.
+        var demoOrgId = await factory.GetDemoOrganizationIdAsync();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+            var stored = await db.Users.FirstAsync(u => u.Email == "prov.maria@demo.local");
+
+            Assert.Equal(created!.Id, stored.Id);
+            Assert.Equal("Maria Silva", stored.FullName);
+            Assert.Equal(UserStatus.Active, stored.Status);
+            Assert.False(stored.IsOwner);
+            Assert.Equal(demoOrgId, stored.OrganizationId);
+            // Nasce sem poder: nenhum vínculo de perfil e nenhuma linha de acesso.
+            Assert.False(await db.UserProfiles.AnyAsync(up => up.UserId == stored.Id));
+            Assert.False(await db.UserCompanyAccesses.AnyAsync(a => a.UserId == stored.Id));
+        }
+
+        // Round-trip pela API: o que a tela de detalhe vai exibir bate com o
+        // estado persistido, e não com o DTO devolvido na criação.
+        var fetched = await manager.GetFromJsonAsync<UserDto>($"/users/{created!.Id}");
+        Assert.NotNull(fetched);
+        Assert.Equal("Maria Silva", fetched!.FullName);
+        Assert.Equal(UserStatus.Active.ToString(), fetched.Status);
+        Assert.False(fetched.IsOwner);
+        Assert.Empty(fetched.Profiles);
+        Assert.Empty(fetched.Companies);
+
+        // A conta nasce inócua: loga, mas /auth/me não traz permissão alguma.
+        // A lista de empresas do /auth/me não serve de prova aqui — ela vem
+        // vazia por falta de companies.access, haja ou não linha de acesso —,
+        // por isso a ausência de concessão foi conferida no banco acima.
         var newbie = await factory.CreateLoggedInClientAsync("prov.maria@demo.local", "Passw0rd!");
         var me = await newbie.GetFromJsonAsync<MeResponse>("/auth/me");
         Assert.NotNull(me);
         Assert.False(me!.IsOwner);
         Assert.Empty(me.Permissions);
-        Assert.Empty(me.Companies);
+    }
+
+    [Fact]
+    public async Task Create_trims_the_full_name_before_persisting()
+    {
+        var manager = await factory.CreateClientWithPermissionsAsync(
+            "prov.trim@demo.local", AccessControlPermissions.UsersManage);
+
+        var resp = await manager.PostAsJsonAsync("/users", new
+        {
+            fullName = "   João  Trim   ", email = "prov.trim.target@demo.local",
+            password = "Passw0rd!",
+        });
+
+        Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
+
+        // O Trim tem que acontecer no CAMINHO DE ESCRITA. Conferir no DTO de
+        // resposta não prova nada: ele carrega a mesma variável já aparada, e o
+        // valor guardado poderia ser outro. O espaço interno é preservado de
+        // propósito — o serviço apara as pontas, não normaliza o nome.
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SeedDbContext>();
+        var stored = await db.Users.FirstAsync(u => u.Email == "prov.trim.target@demo.local");
+        Assert.Equal("João  Trim", stored.FullName);
     }
 
     [Fact]
