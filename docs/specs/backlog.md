@@ -127,6 +127,28 @@ com link para o spec gerado, ou remova-a do backlog.
   substituindo a postura B do v1 (que trata essas permissões como privilégio
   administrativo e restringe só perfis `is_system`).
 
+### email-transacional-convite-usuario — E-mail transacional: convite, recuperação de senha e troca obrigatória no primeiro login
+- **Status:** ideia
+- **Capturado em:** 2026-07-22
+- **Relacionados:** ADR-0006 (sub-decisão de e-mail aberta desde o início),
+  ADR-0013 (auditoria), docs/modules/access-control.md,
+  `docs/specs/2026-07-21-user-provisioning-company-access-design.md`
+- **Descrição:** Escolher fornecedor e implementar e-mail transacional, que
+  destrava três coisas hoje ausentes: **convite de usuário por e-mail**,
+  **recuperação de senha** e a **troca obrigatória de senha no primeiro login**.
+  Este último item entrou aqui em 2026-07-22, com o provisionamento de usuários
+  (`POST /users`): como o administrador define a senha inicial e **não existe**
+  flag `must_change_password`, tela de troca nem gate de navegação, quem cria a
+  conta retém indefinidamente uma credencial válida de outra pessoa e pode
+  autenticar-se como ela. Consequência direta: todo `actor_user_id` daquele
+  usuário passa a ser contestável, o que **enfraquece a não-repúdio** da trilha
+  de auditoria recém-padronizada pela ADR-0013. A mitigação de v1 é **detecção,
+  não prevenção** — o evento `access_control.user.created` registra quem criou a
+  conta. O risco foi aceito explicitamente no design de 2026-07-21 (seção "Riscos
+  aceitos"), amarrado ao convite por e-mail em vez de virar item isolado: com
+  convite, a senha nunca chega a existir do lado do administrador, e a troca
+  obrigatória deixa de ser remendo para virar consequência do fluxo.
+
 ### i18n-troca-idioma — Internacionalização e troca de idioma da UI
 - **Status:** ideia
 - **Capturado em:** 2026-07-19
