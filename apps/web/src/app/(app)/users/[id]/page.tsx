@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { serverGet } from "@/lib/api-server";
 import { NoAccess, ErrorState } from "@/components/states";
 import { UserDetail } from "@/components/UserDetail";
-import type { UserRow, ProfileSummary } from "@/lib/types";
+import type { UserRow, ProfileSummary, Company } from "@/lib/types";
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,5 +23,17 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   } catch {
     allProfiles = null;
   }
-  return <UserDetail user={user} allProfiles={allProfiles} />;
+  // Escopo concedível do operador. /companies já devolve só as empresas
+  // concedidas a ele, que é exatamente o escopo de um não-owner (ADR-0014).
+  // Sem companies.access não há o que oferecer: o card cai para leitura, e o
+  // backend segue sendo a barreira real.
+  let grantableCompanies: Company[] | null = null;
+  try {
+    grantableCompanies = await serverGet<Company[]>("/companies");
+  } catch {
+    grantableCompanies = null;
+  }
+  return (
+    <UserDetail user={user} allProfiles={allProfiles} grantableCompanies={grantableCompanies} />
+  );
 }
