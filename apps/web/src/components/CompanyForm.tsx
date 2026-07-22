@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { errorMessage } from "@/lib/api";
+import { companySchema, firstError } from "@/lib/form-schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +21,17 @@ export default function CompanyForm({ initialName = "", submitLabel, onSubmit }:
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // O schema já apara o nome, então o .trim() manual sai daqui.
+    const parsed = companySchema.safeParse({ name });
+    if (!parsed.success) {
+      setError(firstError(parsed.error));
+      return;
+    }
+
     setLoading(true);
     try {
-      await onSubmit(name.trim());
+      await onSubmit(parsed.data.name);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
