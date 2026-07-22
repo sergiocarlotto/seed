@@ -52,3 +52,10 @@ export type UserRow = {
   profiles: EntityRef[];
   companies: EntityRef[];
 };
+
+export type CompanyUserAccess = {
+  id: string;
+  fullName: string;
+  email: string;
+  hasAccess: boolean;
+};
