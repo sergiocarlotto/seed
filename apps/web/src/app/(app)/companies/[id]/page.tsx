@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import CompanyForm from "@/components/CompanyForm";
+import { CompanyUsersForm } from "@/components/CompanyUsersForm";
 import { api, errorMessage } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { useSetPageHeader } from "@/lib/page-header";
@@ -72,7 +73,7 @@ export default function EditCompanyPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div className="flex items-center justify-end gap-4">
         <Button variant="ghost" size="sm" render={<Link href="/companies" />}>
           Voltar
@@ -91,6 +92,15 @@ export default function EditCompanyPage({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent>
               <CompanyForm initialName={company.name} submitLabel="Salvar" onSubmit={handleSubmit} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Usuários com acesso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CompanyUsersForm companyId={id} />
             </CardContent>
           </Card>
 
