@@ -117,6 +117,27 @@ com link para o spec gerado, ou remova-a do backlog.
   em `companies`), e a "correção" sugerida pela lib (`nativeButton={false}`)
   pioraria a semântica, pondo `role="button"` num link de navegação.
 
+### ui-erros-api-mensagens — Mensagens de erro da API na UI e sessão expirada
+- **Status:** ideia
+- **Capturado em:** 2026-07-22
+- **Relacionados:** `apps/web/src/lib/api.ts`, ADR-0006 (sessão em cookie),
+  `docs/specs/2026-07-21-user-provisioning-company-access-design.md`,
+  [`ui-polimento-listas-mobile`](#ui-polimento-listas-mobile--polimento-de-ui-das-listas-e-telas-de-erro)
+- **Descrição:** Levantado na revisão de coerência da entrega de provisionamento
+  de usuários (2026-07-22). Dois problemas na borda entre a API e a UI:
+  (a) **status sem corpo viram texto em inglês** — 404 e 403 são devolvidos com
+  `NotFound()`/`Forbid()` sem payload, então `api.ts` cai no `res.statusText` e a
+  tela mostra "Not Found" ou "Forbidden" em vermelho numa interface toda em
+  português; acontece, por exemplo, ao salvar empresas de um usuário excluído em
+  outra aba. Os 400 e 409 já estão certos, porque devolvem `{ error }`. Duas
+  saídas possíveis: devolver `{ error }` também nesses status — as mensagens do
+  backend já são deliberadamente neutras, então não vazam existência — ou mapear
+  status → mensagem dentro de `errorMessage()`. (b) **401 não redireciona** — se a
+  sessão expira durante um PUT, o usuário vê "Unauthorized" e fica preso na tela,
+  sem caminho para `/login`; pede tratamento global no `api.ts`, não caso a caso.
+  Nenhum dos dois afeta autorização (o backend barra de qualquer forma); é
+  qualidade de uso.
+
 ### acesso-postura-a — Anti-escalada "não conceder além de si" (postura A)
 - **Status:** ideia
 - **Capturado em:** 2026-07-19
