@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -16,6 +17,7 @@ import type { CompanyUserAccess } from "@/lib/types";
  */
 export function CompanyUsersForm({ companyId }: { companyId: string }) {
   const me = useSession();
+  const router = useRouter();
   const allowed = canGrantCompanies(me);
   const [users, setUsers] = useState<CompanyUserAccess[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -66,6 +68,9 @@ export function CompanyUsersForm({ companyId }: { companyId: string }) {
     try {
       await api.put(`/companies/${companyId}/users`, { userIds: [...selected] });
       setSaved(true);
+      // `me.companies` alimenta o seletor de empresa: sem o refresh, quem mexe
+      // no próprio acesso continua vendo a lista antiga até recarregar à mão.
+      router.refresh();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -75,20 +80,35 @@ export function CompanyUsersForm({ companyId }: { companyId: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {users === null || users.length === 0 ? (
+      {/* A falha de carga também deixa `users` em null. Se as duas situações
+          dividissem o mesmo ramo, um GET com erro mostraria "nenhum usuário" e
+          a mensagem de erro ao mesmo tempo, uma contradizendo a outra. */}
+      {users === null ? null : users.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nenhum usuário na organização.</p>
       ) : (
         <ul className="flex flex-col gap-1.5" data-testid="company-users">
           {users.map((u) => (
             <li key={u.id} className="flex items-center gap-2">
+              {/* O owner alcança toda empresa da organização sem concessão
+                  explícita (ADR-0014, regra 3): mostrá-lo desmarcado faria
+                  concluir que ele não tem acesso, e concedê-lo ou revogá-lo
+                  geraria auditoria sem mudar o acesso efetivo. Marcado e
+                  desabilitado; o payload segue espelhando só as concessões
+                  explícitas que vieram do backend. */}
               <Checkbox
-                checked={selected.has(u.id)}
+                checked={u.isOwner || selected.has(u.id)}
+                disabled={u.isOwner}
                 onCheckedChange={() => toggle(u.id)}
                 aria-label={u.fullName}
               />
               <span className="flex min-w-0 flex-col sm:flex-row sm:gap-2">
                 <span className="truncate text-sm">{u.fullName}</span>
                 <span className="truncate text-xs text-muted-foreground">{u.email}</span>
+                {u.isOwner && (
+                  <span className="text-xs text-muted-foreground">
+                    Owner — acessa todas as empresas da organização
+                  </span>
+                )}
               </span>
             </li>
           ))}

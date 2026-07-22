@@ -6,6 +6,7 @@ import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { can } from "@/lib/access";
+import { canGrantCompanies } from "@/lib/company-access";
 import { useSession } from "@/lib/session";
 import { useSetPageHeader } from "@/lib/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -50,6 +51,12 @@ export default function CompaniesPage() {
   const me = useSession();
   const { companies: sessionCompanies } = me;
   const isAdmin = can(me, "companies.manage");
+  // `companies.manage` (manter o cadastro) e `companies.grant_access` (conceder
+  // acesso) são eixos separados por decisão da ADR-0014. A coluna de ações
+  // aparece para qualquer um dos dois; cada ação dentro dela tem seu próprio
+  // gate, senão o perfil que só concede acesso não chega ao detalhe da empresa.
+  const canGrant = canGrantCompanies(me);
+  const showActions = isAdmin || canGrant;
   const [companies, setCompanies] = useState<Company[]>(sessionCompanies);
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState<Company | null>(null);
@@ -102,7 +109,7 @@ export default function CompaniesPage() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Status</TableHead>
-                {isAdmin && <TableHead className="text-right">Ações</TableHead>}
+                {showActions && <TableHead className="text-right">Ações</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -112,19 +119,32 @@ export default function CompaniesPage() {
                   <TableCell>
                     <StatusBadge status={c.status} />
                   </TableCell>
-                  {isAdmin && (
+                  {showActions && (
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          render={<Link href={`/companies/${c.id}`} />}
-                        >
-                          Editar
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={() => setTarget(c)}>
-                          Excluir
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            render={<Link href={`/companies/${c.id}`} />}
+                          >
+                            Editar
+                          </Button>
+                        )}
+                        {canGrant && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            render={<Link href={`/companies/${c.id}`} />}
+                          >
+                            Acessos
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button variant="destructive" size="sm" onClick={() => setTarget(c)}>
+                            Excluir
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   )}

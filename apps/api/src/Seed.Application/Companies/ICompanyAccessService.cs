@@ -12,7 +12,13 @@ public class CompanyAccessConflictException(string message) : Exception(message)
 public class CompanyAccessValidationException(string message) : Exception(message);
 
 // Usuário da organização, com a marca de quem já tem acesso à empresa em foco.
-public record CompanyUserAccessDto(Guid Id, string FullName, string Email, bool HasAccess);
+//
+// `HasAccess` é estritamente a concessão EXPLÍCITA (linha de UserCompanyAccess),
+// que é o que os endpoints de gravação manipulam e o que a auditoria registra.
+// O owner alcança toda empresa da própria organização por bypass de leitura
+// (ADR-0014, regra 3), sem depender de linha nenhuma — por isso `IsOwner` vem
+// separado, para a tela mostrar o acesso efetivo sem falsear o registro.
+public record CompanyUserAccessDto(Guid Id, string FullName, string Email, bool HasAccess, bool IsOwner);
 
 // Requests (allow-list — organização e ator vêm sempre da sessão).
 //

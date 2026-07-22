@@ -7,8 +7,11 @@ import CompanyForm from "@/components/CompanyForm";
 import { CompanyUsersForm } from "@/components/CompanyUsersForm";
 import { api, errorMessage } from "@/lib/api";
 import type { Company } from "@/lib/types";
+import { can } from "@/lib/access";
+import { canGrantCompanies } from "@/lib/company-access";
+import { useSession } from "@/lib/session";
 import { useSetPageHeader } from "@/lib/page-header";
-import { Loading, ErrorState } from "@/components/states";
+import { Loading, ErrorState, NoAccess } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -25,7 +28,16 @@ export default function EditCompanyPage({ params }: { params: Promise<{ id: stri
   // Next 16: `params` de páginas dinâmicas é uma Promise; em client component
   // usamos o hook `use` para resolvê-la.
   const { id } = use(params);
-  useSetPageHeader({ title: "Editar empresa", breadcrumb: ["Administração", "Empresas", "Editar"] });
+  const me = useSession();
+  // Os dois eixos da ADR-0014 são independentes: quem só concede acesso chega
+  // aqui pela ação "Acessos" e não pode ver controles que responderiam 403.
+  const canManage = can(me, "companies.manage");
+  const canGrant = canGrantCompanies(me);
+  const title = canManage ? "Editar empresa" : "Acessos da empresa";
+  useSetPageHeader({
+    title,
+    breadcrumb: ["Administração", "Empresas", canManage ? "Editar" : "Acessos"],
+  });
   const router = useRouter();
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,23 +98,37 @@ export default function EditCompanyPage({ params }: { params: Promise<{ id: stri
         <ErrorState message={error} />
       ) : company ? (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Dados da empresa</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CompanyForm initialName={company.name} submitLabel="Salvar" onSubmit={handleSubmit} />
-            </CardContent>
-          </Card>
+          {canManage && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados da empresa</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CompanyForm
+                  initialName={company.name}
+                  submitLabel="Salvar"
+                  onSubmit={handleSubmit}
+                />
+              </CardContent>
+            </Card>
+          )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Usuários com acesso</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CompanyUsersForm companyId={id} />
-            </CardContent>
-          </Card>
+          {/* O gate fica no card inteiro: o `CompanyUsersForm` devolve null sem
+              a permissão, e sem isto sobraria um card com título e corpo vazio. */}
+          {canGrant && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Usuários com acesso</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CompanyUsersForm companyId={id} />
+              </CardContent>
+            </Card>
+          )}
+
+          {!canManage && !canGrant && (
+            <NoAccess message="Você não tem permissão para editar esta empresa nem para gerenciar seus acessos." />
+          )}
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
@@ -110,11 +136,13 @@ export default function EditCompanyPage({ params }: { params: Promise<{ id: stri
             </p>
           )}
 
-          <div>
-            <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
-              Excluir empresa
-            </Button>
-          </div>
+          {canManage && (
+            <div>
+              <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
+                Excluir empresa
+              </Button>
+            </div>
+          )}
         </>
       ) : null}
 

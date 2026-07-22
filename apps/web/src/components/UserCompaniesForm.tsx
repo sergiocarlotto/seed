@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -11,6 +12,8 @@ import type { Company, EntityRef } from "@/lib/types";
 
 type UserCompaniesFormProps = {
   userId: string;
+  /** O owner alcança toda a organização por bypass de leitura (ADR-0014). */
+  targetIsOwner: boolean;
   currentCompanies: EntityRef[];
   /** Escopo concedível do operador: o que ele pode conceder ou revogar. */
   grantableCompanies: Company[] | null;
@@ -18,20 +21,37 @@ type UserCompaniesFormProps = {
 
 /**
  * Concessão de acesso a empresas do usuário. Editável só com
- * `companies.grant_access` e quando o escopo pôde ser carregado. Ao contrário de
- * status e perfis, o owner **é** alvo válido aqui: ele está sujeito ao eixo de
- * empresa (ADR-0012) e precisa poder receber acesso.
+ * `companies.grant_access` e quando o escopo pôde ser carregado.
  *
  * Só se envia o que está no escopo do operador; empresas que ele não enxerga
  * ficam intactas no backend (ADR-0014).
  */
-export function UserCompaniesForm({ userId, currentCompanies, grantableCompanies }: UserCompaniesFormProps) {
+export function UserCompaniesForm({
+  userId,
+  targetIsOwner,
+  currentCompanies,
+  grantableCompanies,
+}: UserCompaniesFormProps) {
   const me = useSession();
   const editable = canGrantCompanies(me) && grantableCompanies !== null;
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set(currentCompanies.map((c) => c.id)));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // O owner enxerga e opera qualquer empresa da própria organização por bypass
+  // de leitura (ADR-0014, regra 3), sem depender de concessão explícita. O
+  // checklist só sabe das concessões explícitas, então mostrá-lo aqui exibiria
+  // caixas desmarcadas para empresas que o owner já alcança — e um "conceder"
+  // ou "revogar" que só produziria auditoria, sem mudar o acesso efetivo.
+  if (targetIsOwner) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        O dono da organização acessa todas as empresas dela. Não há acesso a conceder ou revogar.
+      </p>
+    );
+  }
 
   if (!editable) {
     return currentCompanies.length === 0 ? (
@@ -69,6 +89,9 @@ export function UserCompaniesForm({ userId, currentCompanies, grantableCompanies
         companyIds: mergePreservingOutOfScope({ selected: [...selected], scope }),
       });
       setSaved(true);
+      // `me.companies` alimenta o seletor de empresa: sem o refresh, quem mexe
+      // no próprio acesso continua vendo a lista antiga até recarregar à mão.
+      router.refresh();
     } catch (err) {
       setError(errorMessage(err));
     } finally {

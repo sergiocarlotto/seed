@@ -17,10 +17,11 @@ import type { UserRow, ProfileSummary, Company } from "@/lib/types";
 
 /**
  * Detalhe do usuário: status (switch), perfis (checklist) e empresas
- * (checklist). Owner é somente leitura para status e perfis; empresas
- * seguem o eixo de acesso (ADR-0012) e permanecem editáveis mesmo para o
- * owner. O switch exige `users.manage`; a edição de perfis é governada pelo
- * `UserProfilesForm`, e a de empresas pelo `UserCompaniesForm`.
+ * (checklist). Owner é somente leitura para status e perfis, e no eixo de
+ * empresa ele já alcança a organização inteira por bypass (ADR-0014), então o
+ * checklist dá lugar a um aviso. O switch exige `users.manage`; a edição de
+ * perfis é governada pelo `UserProfilesForm`, e a de empresas pelo
+ * `UserCompaniesForm`.
  */
 export function UserDetail({
   user,
@@ -122,6 +123,7 @@ export function UserDetail({
         <CardContent>
           <UserCompaniesForm
             userId={user.id}
+            targetIsOwner={user.isOwner}
             currentCompanies={user.companies}
             grantableCompanies={grantableCompanies}
           />

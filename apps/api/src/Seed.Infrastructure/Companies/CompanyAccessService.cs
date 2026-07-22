@@ -96,11 +96,12 @@ public class CompanyAccessService(
 
         var users = await db.Users.Where(u => u.OrganizationId == orgId)
             .OrderBy(u => u.FullName).ThenBy(u => u.Email)
-            .Select(u => new { u.Id, u.FullName, u.Email })
+            .Select(u => new { u.Id, u.FullName, u.Email, u.IsOwner })
             .ToListAsync(ct);
 
         return users
-            .Select(u => new CompanyUserAccessDto(u.Id, u.FullName, u.Email ?? "", grantedSet.Contains(u.Id)))
+            .Select(u => new CompanyUserAccessDto(
+                u.Id, u.FullName, u.Email ?? "", grantedSet.Contains(u.Id), u.IsOwner))
             .ToList();
     }
 
