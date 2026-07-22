@@ -138,6 +138,27 @@ com link para o spec gerado, ou remova-a do backlog.
   Nenhum dos dois afeta autorização (o backend barra de qualquer forma); é
   qualidade de uso.
 
+### ui-rotulo-acao-lista-usuarios — Ação "Ver" na lista de usuários deveria ser "Editar"
+- **Status:** ideia
+- **Capturado em:** 2026-07-22
+- **Relacionados:** `apps/web/src/components/UsersList.tsx:94`,
+  `apps/web/src/components/ProfilesList.tsx:104-109` (precedente),
+  `apps/web/src/app/(app)/companies/page.tsx:131-143` (precedente),
+  ADR-0011 (UI)
+- **Descrição:** A coluna "Ações" de `/users` rotula o botão como **"Ver"**, mas o
+  destino é literalmente de acesso **e edição**: no detalhe do usuário se altera o
+  status (switch), o conjunto de perfis e — desde a entrega de provisionamento de
+  2026-07-22 — o conjunto de empresas. O rótulo descreve menos do que a ação faz.
+  O projeto já tem o padrão certo em duas telas: `ProfilesList` usa "Ver" para o
+  perfil `is_system` (esse sim somente-leitura) e "Editar" para os demais, e a
+  lista de empresas passou a usar "Editar"/"Acessos" conforme a permissão do
+  operador. **Nuance a considerar na correção:** "Ver" continua sendo o rótulo
+  correto quando o alvo é o **owner**, que é somente-leitura na aplicação (não
+  pode ser desativado nem ter perfis alterados — ADR-0012), e também para um
+  operador sem nenhuma das permissões de edição. Ou seja, a correção provável não
+  é trocar a palavra, e sim torná-la condicional, como já se faz nas outras duas
+  listas.
+
 ### acesso-postura-a — Anti-escalada "não conceder além de si" (postura A)
 - **Status:** ideia
 - **Capturado em:** 2026-07-19
