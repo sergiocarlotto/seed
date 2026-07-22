@@ -159,6 +159,38 @@ com link para o spec gerado, ou remova-a do backlog.
   é trocar a palavra, e sim torná-la condicional, como já se faz nas outras duas
   listas.
 
+### usuarios-crud-editar-excluir — Completar o CRUD de usuário: editar dados e excluir
+- **Status:** ideia
+- **Capturado em:** 2026-07-22
+- **Relacionados:** `docs/modules/access-control.md`, ADR-0012 (owner somente-leitura),
+  ADR-0013 (auditoria sem FK), ADR-0005 (soft delete como padrão),
+  `apps/api/src/Seed.Api/Controllers/UsersController.cs`
+- **Descrição:** O cadastro de usuário só cobre parte do CRUD. Hoje existem
+  `GET /users`, `GET /users/{id}`, `POST /users`, `PATCH /users/{id}/status`,
+  `PUT /users/{id}/profiles` e `PUT /users/{id}/companies`. **Desativar já está
+  implementado** (`UserStatus.Inactive`: permissão efetiva vazia, login recusado,
+  bloqueio imediato) — a ação existe como switch no detalhe do usuário, e o que
+  eventualmente falta ali é visibilidade, já que ela não aparece na lista. O que
+  **não existe** é: (a) **editar os dados básicos** — não há endpoint para alterar
+  `fullName` nem `email`, então um nome digitado errado no cadastro não tem
+  conserto pela aplicação; (b) **excluir**. Questões de design a resolver antes de
+  implementar a exclusão, todas com resposta não óbvia: **soft ou hard?** O
+  projeto usa soft delete (`DeletedAt`) em `Company`, `Profile` e `Organization`,
+  mas `ApplicationUser` é do Identity e **não tem `DeletedAt`** — só `Status`;
+  seria coluna nova, estado novo, ou "desativado" já basta e o que falta é apenas
+  nomenclatura na UI? **E-mail preso:** o e-mail é único globalmente, então um
+  usuário apenas desativado retém o endereço para sempre — quem sai e volta, ou um
+  endereço a ser reaproveitado, não têm caminho. Isso é um argumento concreto a
+  favor de exclusão real. **Auditoria:** `AuditEvents` é append-only e sem FK
+  (ADR-0013), então excluir não quebra integridade, mas o histórico perde o rótulo
+  humano do ator — vale conferir se os eventos de usuário gravam nome junto do id,
+  como a ADR-0013 seção 3 exige para vínculos. **Cascata:** `UserProfile` e
+  `UserCompanyAccess` têm FK com `Cascade`, então a exclusão leva os vínculos
+  junto, silenciosamente. **Owner:** não pode ser excluído nem arquivado, pelo
+  mesmo piso antilockout que já o protege de desativação (ADR-0012). **LGPD:**
+  direito ao esquecimento pode transformar a exclusão real em requisito, não
+  preferência — se for o caso, a decisão muda de natureza e pede ADR.
+
 ### acesso-postura-a — Anti-escalada "não conceder além de si" (postura A)
 - **Status:** ideia
 - **Capturado em:** 2026-07-19
